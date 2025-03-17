@@ -4,10 +4,10 @@ Unicode plotting library designed for use in python.
 
 # Supported backends
 
-- [ ] Numpy
+- [ ] numpy
 - [ ] tinygrad
-- [ ] Pytorch
-- [ ] Python
+- [ ] pytorch
+- [ ] python
 
 # Inference
 > Plots
