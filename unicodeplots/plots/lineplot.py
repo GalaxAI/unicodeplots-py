@@ -17,14 +17,14 @@ class Lineplot:
             **kwargs: Styling parameters and canvas configuration
         """
         # Parse data from args first
-        self.datasets = self._parse_arguments(*args)
         canvas_kwargs = self._extract_canvas_params(kwargs)
         self.canvas_params = CanvasParams(**canvas_kwargs)
-        
-        # Create canvas with validated parameters
         self.canvas = BrailleCanvas(self.canvas_params)
         
-        # Store additional plot styling parameters
+        self.other_kwargs = kwargs
+        self.datasets = self._parse_arguments(*args)
+        
+        # Create canvas with validated parameters
         self.colors = kwargs.get('colors', [Color.RED, Color.GREEN, Color.BLUE, Color.YELLOW])
         self.auto_scale = kwargs.get('auto_scale', True)
 
@@ -51,6 +51,7 @@ class Lineplot:
             List of (x_data, y_data) tuples
         """
         datasets = []
+        y_scale = self.other_kwargs.get('y_scale', lambda x: x)
 
         if len(args) == 0:
             return datasets
@@ -59,6 +60,8 @@ class Lineplot:
         if len(args) == 1:
             y_data = args[0]
             x_data = list(range(len(y_data)))
+            # Apply y_scale transformation
+            y_data = [y_scale(y) for y in y_data]
             datasets.append((x_data, y_data))
             return datasets
 
@@ -71,7 +74,9 @@ class Lineplot:
                 y_data = [args[1](x) for x in x_data]
             else:
                 y_data = args[1]
-
+                
+            # Apply y_scale transformation
+            y_data = [y_scale(y) for y in y_data]
             datasets.append((x_data, y_data))
             return datasets
 
@@ -115,7 +120,6 @@ class Lineplot:
         # Initialize with the first point of the first dataset
         x_values = [x for dataset in self.datasets for x in dataset[0]]
         y_values = [y for dataset in self.datasets for y in dataset[1]]
-
         if not x_values or not y_values:
             return (0.0, 1.0, 0.0, 1.0)
 
@@ -178,16 +182,38 @@ class Lineplot:
 
 
 if __name__ == "__main__":
-    # Linear plot example
     import math
-    print(Lineplot([1, 2, 7], [9, -6, 8]).render())
     
-    # # Trig functions example
+    print("\n" + "="*60)
+    print("EXAMPLE 1: Simple Linear Plot")
+    print("="*60)
+    print(Lineplot([1, 2, 7], [9, -6, 8]).render())
+    print(Lineplot(list(range(10))).render())
+    
+    # Generate x values for trig functions
     x_vals = [x/10 for x in range(-31, 62)]
-    # SIN
+    
+    print("\n" + "="*60)
+    print("EXAMPLE 2: Trigonometric Functions")
+    print("="*60)
+    print("SIN Function:")
     print(Lineplot(x_vals, math.sin).render())
-    # COS
+    
+    print("\nCOS Function:")
     print(Lineplot(x_vals, math.cos).render())
     
-    # SIN + COS
-    print(Lineplot(x_vals, math.sin, x_vals,math.cos).render())
+    print("\nSIN + COS Together:")
+    print(Lineplot(x_vals, math.sin, x_vals, math.cos).render())
+    
+    print("\n" + "="*60)
+    print("EXAMPLE 3: Logarithmic Scale Comparison")
+    print("="*60)
+    # Generate data with exponential growth
+    x_log = list(range(1, 11))
+    y_log = [2**n for n in x_log]
+    
+    print("With Linear Scale:")
+    print(Lineplot(x_log, y_log).render())
+    
+    print("\nWith Logarithmic Scale (log2):")
+    print(Lineplot(x_log, y_log, y_scale=lambda y: math.log2(y)).render())
