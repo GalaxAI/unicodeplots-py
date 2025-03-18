@@ -55,61 +55,6 @@ class Canvas(ABC):
     def _set_pixel(self, px: int, py: int, color: ColorType, blend: bool):
         pass
 
-    @property
-    def params(self) -> CanvasParams:
-        """Get the full parameters object"""
-        return self._params
-
-    @property
-    def width(self) -> int:
-        """Get the logical width of the canvas"""
-        return self._params.width
-
-    @property
-    def height(self) -> int:
-        """Get the logical height of the canvas"""
-        return self._params.height
-
-    @property
-    def resolution(self) -> float:
-        """Get the pixel resolution"""
-        return self._params.resolution
-
-    @property
-    def origin_x(self) -> float:
-        """Get the x-origin coordinate"""
-        return self._params.origin_x
-
-    @property
-    def origin_y(self) -> float:
-        """Get the y-origin coordinate"""
-        return self._params.origin_y
-
-    @property
-    def xflip(self) -> bool:
-        """Get the x-flip setting"""
-        return self._params.xflip
-
-    @property
-    def yflip(self) -> bool:
-        """Get the y-flip setting"""
-        return self._params.yflip
-
-    @property
-    def blend(self) -> bool:
-        """Get the color blending setting"""
-        return self._params.blend
-
-    @property
-    def xscale(self) -> Callable[[float], float]:
-        """Get the x-scaling function"""
-        return self._params.xscale
-
-    @property
-    def yscale(self) -> Callable[[float], float]:
-        """Get the y-scaling function"""
-        return self._params.yscale
-
     def x_to_pixel(self, x: float) -> float:
         """Convert logical x coordinate to pixel space"""
         scaled = self.xscale(x)
@@ -166,3 +111,58 @@ class Canvas(ABC):
                 line.append(ColorType(color).apply(char))
             lines.append(''.join(line))
         return '\n'.join(lines)
+    
+    @property
+    def params(self) -> CanvasParams:
+        """Get the full parameters object"""
+        return self._params
+
+    @property
+    def width(self) -> int:
+        """Get the logical width of the canvas"""
+        return self._params.width
+
+    @property
+    def height(self) -> int:
+        """Get the logical height of the canvas"""
+        return self._params.height
+
+    @property
+    def resolution(self) -> float:
+        """Get the pixel resolution"""
+        return self._params.resolution
+
+    @property
+    def origin_x(self) -> float:
+        """Get the x-origin coordinate"""
+        return self._params.origin_x
+
+    @property
+    def origin_y(self) -> float:
+        """Get the y-origin coordinate"""
+        return self._params.origin_y
+
+    @property
+    def xflip(self) -> bool:
+        """Get the x-flip setting"""
+        return self._params.xflip
+
+    @property
+    def yflip(self) -> bool:
+        """Get the y-flip setting"""
+        return self._params.yflip
+
+    @property
+    def blend(self) -> bool:
+        """Get the color blending setting"""
+        return self._params.blend
+
+    @property
+    def xscale(self) -> Callable[[float], float]:
+        """Get the x-scaling function"""
+        return self._params.xscale
+
+    @property
+    def yscale(self) -> Callable[[float], float]:
+        """Get the y-scaling function"""
+        return self._params.yscale
