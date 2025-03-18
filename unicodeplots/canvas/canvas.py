@@ -1,69 +1,28 @@
-import math
 from abc import ABC, abstractmethod
-from enum import IntEnum
-from typing import Tuple, Optional, List, Callable
+from typing import Callable
+import math
 
-INVALID_COLOR = -1
+from unicodeplots.utils import CanvasParams, ColorType
 
-class ColorType(IntEnum):
-    """ANSI color codes with named constants and integer compatibility"""
-    INVALID = INVALID_COLOR
-    RED = 196
-    GREEN = 46
-    BLUE = 21
-    WHITE = 15
-    BLACK = 0
-    ORANGE = 208
-    YELLOW = 226
-    PURPLE = 129
-
-    @classmethod
-    def _missing_(cls, value):
-        """Allow creation from any integer while preserving enum benefits"""
-        return cls.INVALID
-
-    def ansi_prefix(self) -> str:
-        """Generate ANSI escape code for the color"""
-        if self == ColorType.INVALID:
-            return ''
-        return f"\033[38;5;{self.value}m"
-
-    def apply(self, text: str) -> str:
-        """Apply color to text with reset at end"""
-        if self == ColorType.INVALID:
-            return text
-        return f"{self.ansi_prefix()}{text}\033[0m"
-
-Color = ColorType
 
 class Canvas(ABC):
-    def __init__(self, 
-            width: float,          # Logical width
-            height: float,         # Logical height
-            resolution: float = 1, # Pixels per logical unit
-            origin_x: float = 0,
-            origin_y: float = 0,
-            xflip: bool = False,
-            yflip: bool = False,
-            blend: bool = True,
-            xscale: Callable[[float], float] = lambda x: x,
-            yscale: Callable[[float], float] = lambda y: y):
-        
-        self.width = width
-        self.height = height
-        self.resolution = resolution
-        self.origin_x = origin_x
-        self.origin_y = origin_y
-        self.xflip = xflip
-        self.yflip = yflip
-        self.blend = blend
-        self.xscale = xscale
-        self.yscale = yscale
-        
+    def __init__(self,
+        params: CanvasParams = None, **kwargs):
+
+        if params is None:
+            params = CanvasParams()
+
+        for key, value in kwargs.items():
+            if hasattr(params, key):
+                setattr(params, key, value)
+
+        # Store params
+        self._params = params
+
         # Calculate pixel dimensions based on logical dimensions and resolution
-        self.pixel_width = math.ceil(width * resolution)
-        self.pixel_height = math.ceil(height * resolution)
-        
+        self.pixel_width = math.ceil(params.width * params.resolution)
+        self.pixel_height = math.ceil(params.height * params.resolution)
+
         # Ensure pixel dimensions are multiples of character cell dimensions
         self.pixel_width = self._align_to_char_width(self.pixel_width)
         self.pixel_height = self._align_to_char_height(self.pixel_height)
@@ -95,6 +54,61 @@ class Canvas(ABC):
     @abstractmethod
     def _set_pixel(self, px: int, py: int, color: ColorType, blend: bool):
         pass
+
+    @property
+    def params(self) -> CanvasParams:
+        """Get the full parameters object"""
+        return self._params
+
+    @property
+    def width(self) -> int:
+        """Get the logical width of the canvas"""
+        return self._params.width
+
+    @property
+    def height(self) -> int:
+        """Get the logical height of the canvas"""
+        return self._params.height
+
+    @property
+    def resolution(self) -> float:
+        """Get the pixel resolution"""
+        return self._params.resolution
+
+    @property
+    def origin_x(self) -> float:
+        """Get the x-origin coordinate"""
+        return self._params.origin_x
+
+    @property
+    def origin_y(self) -> float:
+        """Get the y-origin coordinate"""
+        return self._params.origin_y
+
+    @property
+    def xflip(self) -> bool:
+        """Get the x-flip setting"""
+        return self._params.xflip
+
+    @property
+    def yflip(self) -> bool:
+        """Get the y-flip setting"""
+        return self._params.yflip
+
+    @property
+    def blend(self) -> bool:
+        """Get the color blending setting"""
+        return self._params.blend
+
+    @property
+    def xscale(self) -> Callable[[float], float]:
+        """Get the x-scaling function"""
+        return self._params.xscale
+
+    @property
+    def yscale(self) -> Callable[[float], float]:
+        """Get the y-scaling function"""
+        return self._params.yscale
 
     def x_to_pixel(self, x: float) -> float:
         """Convert logical x coordinate to pixel space"""

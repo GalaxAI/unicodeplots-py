@@ -1,4 +1,6 @@
-from unicodeplots.canvas import Canvas, ColorType, INVALID_COLOR, Color
+from unicodeplots.canvas import Canvas
+from unicodeplots.utils import INVALID_COLOR, CanvasParams, Color, ColorType
+
 
 class BrailleCanvas(Canvas):
     @property
@@ -9,14 +11,21 @@ class BrailleCanvas(Canvas):
     def y_pixel_per_char(self) -> int:
         return 4
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        
+    def __init__(self, params: CanvasParams = None, **kwargs):
+        """
+        Create a Braille-based canvas for unicode plotting.
+
+        Args:
+            params: Canvas parameters as a CanvasParams object
+            **kwargs: Additional parameters that override values in params if provided
+        """
+        super().__init__(params=params, **kwargs)
+
         self.grid_rows = self.pixel_height // self.y_pixel_per_char
         self.grid_cols = self.pixel_width // self.x_pixel_per_char
-        self.grid = [[chr(0x2800) for _ in range(self.grid_cols)] 
+        self.grid = [[chr(0x2800) for _ in range(self.grid_cols)]
                     for _ in range(self.grid_rows)]
-        self.colors = [[INVALID_COLOR for _ in range(self.grid_cols)] 
+        self.colors = [[INVALID_COLOR for _ in range(self.grid_cols)]
                       for _ in range(self.grid_rows)]
 
     def _set_pixel(self, px: int, py: int, color: ColorType, blend: bool):
@@ -89,5 +98,5 @@ if __name__ == "__main__":
         x2, y2 = b[i+1]
         print(f"Drawing line from {(x1, y1)} to {(x2, y2)}")
         canvas.line(x1, y1, x2, y2, color=Color.RED)
-    
+
     print(canvas.render())
