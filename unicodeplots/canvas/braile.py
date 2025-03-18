@@ -1,4 +1,4 @@
-from unicodeplots.canvas import Canvas
+from unicodeplots.canvas.canvas import Canvas
 from unicodeplots.utils import INVALID_COLOR, CanvasParams, Color, ColorType
 
 
