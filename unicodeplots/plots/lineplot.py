@@ -25,7 +25,7 @@ class Lineplot:
         self.datasets = self._parse_arguments(*args)
         
         # Create canvas with validated parameters
-        self.colors = kwargs.get('colors', [Color.RED, Color.GREEN, Color.BLUE, Color.YELLOW])
+        self.colors = kwargs.get('colors', [Color.GREEN, Color.RED, Color.BLUE, Color.YELLOW])
         self.auto_scale = kwargs.get('auto_scale', True)
 
         # Create canvas with extracted parameters
@@ -217,3 +217,47 @@ if __name__ == "__main__":
     
     print("\nWith Logarithmic Scale (log2):")
     print(Lineplot(x_log, y_log, y_scale=lambda y: math.log2(y)).render())
+
+    print("\n" + "="*60)
+    print("EXAMPLE 4: Different Scaling Functions")
+    print("="*60)
+    
+    # Generate sample data with wide range of values
+    x_scale = list(range(1, 11))
+    y_scale = [2**n for n in x_scale]  # Exponential growth [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+    
+    print("Original Data (Linear Scale):")
+    print(Lineplot(x_scale, y_scale).render())
+    
+    print("\nLogarithmic Scale (log2):")
+    print(Lineplot(x_scale, y_scale, y_scale=lambda y: math.log2(y)).render())
+    
+    print("\nLogarithmic Scale (log10):")
+    print(Lineplot(x_scale, y_scale, y_scale=lambda y: math.log10(y)).render())
+    
+    print("\nNatural Logarithm Scale (ln):")
+    print(Lineplot(x_scale, y_scale, y_scale=lambda y: math.log(y)).render())
+    
+    print("\nSquare Root Scale:")
+    print(Lineplot(x_scale, y_scale, y_scale=lambda y: math.sqrt(y)).render())
+    
+    print("\nCube Root Scale:")
+    print(Lineplot(x_scale, y_scale, y_scale=lambda y: y**(1/3)).render())
+    
+    print("\nInverse Scale (1/y):")
+    print(Lineplot(x_scale, y_scale, y_scale=lambda y: 1/y if y != 0 else 0).render())
+    
+    print("\nSymmetric Log Scale (for data with positive and negative values):")
+    mixed_data = [-1000, -100, -10, -1, 0, 1, 10, 100, 1000]
+    # A simple implementation of symlog that preserves sign
+    symlog = lambda y: math.log10(abs(y)) * (1 if y >= 0 else -1) if y != 0 else 0
+    print(Lineplot(range(len(mixed_data)), mixed_data, y_scale=symlog).render())
+    
+    print("\nMinMax Scale (normalize to 0-1 range):")
+    y_min, y_max = min(y_scale), max(y_scale)
+    print(Lineplot(x_scale, y_scale, y_scale=lambda y: (y - y_min) / (y_max - y_min)).render())
+    
+    print("\nZ-Score Standardization:")
+    y_mean = sum(y_scale) / len(y_scale)
+    y_std = math.sqrt(sum((y - y_mean)**2 for y in y_scale) / len(y_scale))
+    print(Lineplot(x_scale, y_scale, y_scale=lambda y: (y - y_mean) / y_std).render())
