@@ -5,7 +5,7 @@ from typing import Callable
 @dataclass
 class CanvasParams:
     """Parameters for the plotting canvas."""
-    width: int = 64
+    width: int = 128
     height: int = 64
     resolution: float = 1.0
     origin_x: float = 0.0
