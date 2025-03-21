@@ -4,9 +4,8 @@ from unicodeplots.utils.params import CanvasParams
 Color = ColorType
 
 __all__ = [
-    'Color',
-    'ColorType',
-    'INVALID_COLOR',
-
-    'CanvasParams',
+    "Color",
+    "ColorType",
+    "INVALID_COLOR",
+    "CanvasParams",
 ]

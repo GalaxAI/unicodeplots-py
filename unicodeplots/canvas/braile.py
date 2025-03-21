@@ -1,3 +1,5 @@
+from typing import Optional
+
 from unicodeplots.canvas.canvas import Canvas
 from unicodeplots.utils import CanvasParams, Color, ColorType
 
@@ -11,7 +13,7 @@ class BrailleCanvas(Canvas):
     def y_pixel_per_char(self) -> int:
         return 4
 
-    def __init__(self, params: CanvasParams = None, **kwargs):
+    def __init__(self, params: Optional[CanvasParams] = None, **kwargs):
         """
         Create a Braille-based canvas for unicode plotting.
 
@@ -33,7 +35,7 @@ class BrailleCanvas(Canvas):
             [0x08, 0x10, 0x20, 0x80],  # x=1
         ]
 
-    def _set_pixel(self, px: int, py: int, color: ColorType):
+    def _set_pixel(self, px: int, py: int, color: ColorType) -> None:
         """Set a pixel in the Braille grid representation."""
         cx = px // self.x_pixel_per_char
         cy = py // self.y_pixel_per_char

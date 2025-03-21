@@ -2,8 +2,10 @@ from enum import IntEnum
 
 INVALID_COLOR = -1
 
+
 class ColorType(IntEnum):
     """ANSI color codes with named constants and integer compatibility"""
+
     INVALID = INVALID_COLOR
     RED = 196
     GREEN = 46
@@ -22,7 +24,7 @@ class ColorType(IntEnum):
     def ansi_prefix(self) -> str:
         """Generate ANSI escape code for the color"""
         if self == ColorType.INVALID:
-            return ''
+            return ""
         return f"\033[38;5;{self.value}m"
 
     def apply(self, text: str) -> str:
@@ -30,5 +32,6 @@ class ColorType(IntEnum):
         if self == ColorType.INVALID:
             return text
         return f"{self.ansi_prefix()}{text}\033[0m"
+
 
 Color = ColorType

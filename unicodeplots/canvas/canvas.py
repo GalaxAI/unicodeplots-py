@@ -1,6 +1,6 @@
-from typing import Callable, Optional
-from abc import ABC, abstractmethod
 import math
+from abc import ABC, abstractmethod
+from typing import Callable, Optional
 
 from unicodeplots.utils import CanvasParams, ColorType
 

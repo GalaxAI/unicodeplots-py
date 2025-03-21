@@ -1,17 +1,19 @@
-from typing import List, Tuple, Callable, Any, Optional, Union
 from dataclasses import fields
+from typing import List, Tuple, Union
 
 from unicodeplots.canvas import BrailleCanvas
-from unicodeplots.utils import Color, CanvasParams
+from unicodeplots.utils import CanvasParams, Color
+
 
 class Lineplot:
     """
     A class for creating line plots with Unicode characters.
     """
+
     def __init__(self, *args, **kwargs) -> None:
         """
         Initialize a line plot with data and styling parameters.
-        
+
         Args:
             *args: Data to plot in various formats (see _parse_arguments)
             **kwargs: Styling parameters and canvas configuration
@@ -20,13 +22,13 @@ class Lineplot:
         canvas_kwargs = self._extract_canvas_params(kwargs)
         self.canvas_params = CanvasParams(**canvas_kwargs)
         self.canvas = BrailleCanvas(self.canvas_params)
-        
+
         self.other_kwargs = kwargs
         self.datasets = self._parse_arguments(*args)
-        
+
         # Create canvas with validated parameters
-        self.colors = kwargs.get('colors', [Color.GREEN, Color.RED, Color.BLUE, Color.YELLOW])
-        self.auto_scale = kwargs.get('auto_scale', True)
+        self.colors = kwargs.get("colors", [Color.GREEN, Color.RED, Color.BLUE, Color.YELLOW])
+        self.auto_scale = kwargs.get("auto_scale", True)
 
         # Create canvas with extracted parameters
         self.plot()
@@ -37,7 +39,7 @@ class Lineplot:
         param_fields = {f.name for f in fields(CanvasParams)}
         return {k: v for k, v in all_kwargs.items() if k in param_fields}
 
-    def _parse_arguments(self, *args) -> List[Tuple[List[float], List[float]]]:
+    def _parse_arguments(self, *args) -> List[Tuple[List[Union[float, int]], List[Union[float, int]]]]:
         """
         Parse arguments similar to matplotlib.pyplot.plot
 
@@ -46,22 +48,27 @@ class Lineplot:
         - x_data, y_data: [1, 2, 3], [4, 5, 6]
         - x_data, callable: [1, 2, 3], lambda x: x**2
         - x_range, *callables: (0, 10, 100), lambda x: x**2, lambda x: x**3
-        
+
         Returns:
             List of (x_data, y_data) tuples
         """
-        datasets = []
-        y_scale = self.other_kwargs.get('y_scale', lambda x: x)
+        datasets: List[Tuple[List[Union[float, int]], List[Union[float, int]]]] = []
+        y_scale = self.canvas.yscale
 
         if len(args) == 0:
             return datasets
 
         # Case 1: Single array/list - treat as y values
         if len(args) == 1:
-            y_data = args[0]
-            x_data = list(range(len(y_data)))
-            # Apply y_scale transformation
-            y_data = [y_scale(y) for y in y_data]
+            y_values = args[0]
+            x_data: List[Union[float, int]] = list(range(len(y_values)))
+            # Apply y_scale transformation and validate data types
+            y_data: List[Union[float, int]] = []
+            for y in y_values:
+                if not isinstance(y, (int, float)):
+                    raise TypeError(f"Y values must be numbers, got {type(y)}")
+                y_data.append(y_scale(y))
+
             datasets.append((x_data, y_data))
             return datasets
 
@@ -74,7 +81,7 @@ class Lineplot:
                 y_data = [args[1](x) for x in x_data]
             else:
                 y_data = args[1]
-                
+
             # Apply y_scale transformation
             y_data = [y_scale(y) for y in y_data]
             datasets.append((x_data, y_data))
@@ -141,7 +148,7 @@ class Lineplot:
     def plot(self):
         """
         Draw the plot on the canvas.
-        
+
         Returns:
             self: For method chaining
         """
@@ -156,7 +163,7 @@ class Lineplot:
             # Set the origin point to match the data bounds
             self.canvas.params.origin_x = min_x
             self.canvas.params.origin_y = min_y
-            
+
             # Update width and height to match data range
             self.canvas.params.width = max_x - min_x
             self.canvas.params.height = max_y - min_y
@@ -167,7 +174,7 @@ class Lineplot:
 
             for i in range(1, len(x_data)):
                 # Draw the line segment - canvas will handle the scaling
-                self.canvas.line(x_data[i-1], y_data[i-1], x_data[i], y_data[i], color=color)
+                self.canvas.line(x_data[i - 1], y_data[i - 1], x_data[i], y_data[i], color=color)
 
         return self
 
@@ -183,81 +190,58 @@ class Lineplot:
 
 if __name__ == "__main__":
     import math
-    
-    print("\n" + "="*60)
+
+    print("\n" + "=" * 60)
     print("EXAMPLE 1: Simple Linear Plot")
-    print("="*60)
+    print("=" * 60)
     print(Lineplot([1, 2, 7], [9, -6, 8]).render())
     print(Lineplot(list(range(10))).render())
-    
+
     # Generate x values for trig functions
-    x_vals = [x/10 for x in range(-31, 62)]
-    
-    print("\n" + "="*60)
+    x_vals = [x / 10 for x in range(-31, 62)]
+
+    print("\n" + "=" * 60)
     print("EXAMPLE 2: Trigonometric Functions")
-    print("="*60)
+    print("=" * 60)
     print("SIN Function:")
     print(Lineplot(x_vals, math.sin).render())
-    
+
     print("\nCOS Function:")
     print(Lineplot(x_vals, math.cos).render())
-    
+
     print("\nSIN + COS Together:")
     print(Lineplot(x_vals, math.sin, x_vals, math.cos).render())
-    
-    print("\n" + "="*60)
+
+    print("\n" + "=" * 60)
     print("EXAMPLE 3: Logarithmic Scale Comparison")
-    print("="*60)
+    print("=" * 60)
     # Generate data with exponential growth
     x_log = list(range(1, 11))
     y_log = [2**n for n in x_log]
-    
+
     print("With Linear Scale:")
     print(Lineplot(x_log, y_log).render())
-    
+
     print("\nWith Logarithmic Scale (log2):")
     print(Lineplot(x_log, y_log, y_scale=lambda y: math.log2(y)).render())
 
-    print("\n" + "="*60)
-    print("EXAMPLE 4: Different Scaling Functions")
-    print("="*60)
-    
-    # Generate sample data with wide range of values
-    x_scale = list(range(1, 11))
-    y_scale = [2**n for n in x_scale]  # Exponential growth [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
-    
-    print("Original Data (Linear Scale):")
-    print(Lineplot(x_scale, y_scale).render())
-    
-    print("\nLogarithmic Scale (log2):")
-    print(Lineplot(x_scale, y_scale, y_scale=lambda y: math.log2(y)).render())
-    
-    print("\nLogarithmic Scale (log10):")
-    print(Lineplot(x_scale, y_scale, y_scale=lambda y: math.log10(y)).render())
-    
-    print("\nNatural Logarithm Scale (ln):")
-    print(Lineplot(x_scale, y_scale, y_scale=lambda y: math.log(y)).render())
-    
-    print("\nSquare Root Scale:")
-    print(Lineplot(x_scale, y_scale, y_scale=lambda y: math.sqrt(y)).render())
-    
-    print("\nCube Root Scale:")
-    print(Lineplot(x_scale, y_scale, y_scale=lambda y: y**(1/3)).render())
-    
-    print("\nInverse Scale (1/y):")
-    print(Lineplot(x_scale, y_scale, y_scale=lambda y: 1/y if y != 0 else 0).render())
-    
-    print("\nSymmetric Log Scale (for data with positive and negative values):")
-    mixed_data = [-1000, -100, -10, -1, 0, 1, 10, 100, 1000]
-    # A simple implementation of symlog that preserves sign
-    symlog = lambda y: math.log10(abs(y)) * (1 if y >= 0 else -1) if y != 0 else 0
-    print(Lineplot(range(len(mixed_data)), mixed_data, y_scale=symlog).render())
-    
-    print("\nMinMax Scale (normalize to 0-1 range):")
-    y_min, y_max = min(y_scale), max(y_scale)
-    print(Lineplot(x_scale, y_scale, y_scale=lambda y: (y - y_min) / (y_max - y_min)).render())
-    
-    print("\nZ-Score Standardization:")
-    y_mean = sum(y_scale) / len(y_scale)
-    y_std = math.sqrt(sum((y - y_mean)**2 for y in y_scale) / len(y_scale))
-    print(Lineplot(x_scale, y_scale, y_scale=lambda y: (y - y_mean) / y_std).render())
+    import math
+    from pathlib import Path
+
+    import torch
+
+    save_path = Path("training_metrics.pt")
+    metrics = torch.load(save_path)
+    train_loss_per_step = metrics["train_loss_per_step"]
+    train_acc_per_step = metrics["train_acc_per_step"]
+    print(f"Loaded pre-saved metrics from {save_path.resolve()}")
+
+    # Rest of the plotting code remains unchanged
+    steps = list(range(len(train_loss_per_step)))
+
+    print("\nTraining Loss (per step):")
+
+    print(Lineplot(steps, train_loss_per_step).render())
+
+    print("\nTraining Accuracy (per step):")
+    print(Lineplot(steps, train_acc_per_step).render())
