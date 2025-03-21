@@ -26,6 +26,9 @@ class Canvas(ABC):
         # Ensure pixel dimensions are multiples of character cell dimensions
         self.pixel_width = self._align_to_char_width(self.pixel_width)
         self.pixel_height = self._align_to_char_height(self.pixel_height)
+        
+        self.grid_rows = self.pixel_height // self.y_pixel_per_char
+        self.grid_cols = self.pixel_width // self.x_pixel_per_char
 
     def _align_to_char_width(self, width: int) -> int:
         """Ensure width is aligned to character cell boundaries"""
@@ -68,15 +71,6 @@ class Canvas(ABC):
         if self.yflip:
             return (scaled - self.origin_y) / self.height * self.pixel_height
         return (1 - (scaled - self.origin_y) / self.height) * self.pixel_height
-
-    def pixel(self, x: float, y: float, color: ColorType, blend: bool = None):
-        """Set a pixel at logical coordinates (x,y)"""
-        if blend is None:
-            blend = self.blend
-        px = math.floor(self.x_to_pixel(x))
-        py = math.floor(self.y_to_pixel(y))
-        if 0 <= px < self.pixel_width and 0 <= py < self.pixel_height:
-            self._set_pixel(px, py, color, blend)
 
     def line(self, x1: float, y1: float, x2: float, y2: float, color: ColorType, blend: bool = None):
         """Draw a line between logical coordinates (x1,y1) and (x2,y2)"""
