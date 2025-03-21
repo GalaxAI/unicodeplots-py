@@ -24,25 +24,18 @@ class Canvas(ABC):
         self.pixel_height = math.ceil(params.height * params.resolution)
 
         # Ensure pixel dimensions are multiples of character cell dimensions
-        self.pixel_width = self._align_to_char_width(self.pixel_width)
-        self.pixel_height = self._align_to_char_height(self.pixel_height)
+        self.pixel_width = self._align_to_char_length(self.pixel_width)
+        self.pixel_height = self._align_to_char_length(self.pixel_height)
         
         self.grid_rows = self.pixel_height // self.y_pixel_per_char
         self.grid_cols = self.pixel_width // self.x_pixel_per_char
 
-    def _align_to_char_width(self, width: int) -> int:
-        """Ensure width is aligned to character cell boundaries"""
-        remainder = width % self.x_pixel_per_char
+    def _align_to_char_length(self, length: int) -> int:
+        """Ensure length is aligned to character cell boundaries"""
+        remainder = length % self.x_pixel_per_char
         if remainder > 0:
-            return width + (self.x_pixel_per_char - remainder)
-        return width
-
-    def _align_to_char_height(self, height: int) -> int:
-        """Ensure height is aligned to character cell boundaries"""
-        remainder = height % self.y_pixel_per_char
-        if remainder > 0:
-            return height + (self.y_pixel_per_char - remainder)
-        return height
+            return length + (self.x_pixel_per_char - remainder)
+        return length
 
     @property
     @abstractmethod
