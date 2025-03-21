@@ -1,7 +1,6 @@
 from unicodeplots.canvas.canvas import Canvas
 from unicodeplots.utils import INVALID_COLOR, CanvasParams, Color, ColorType
 
-
 class BrailleCanvas(Canvas):
     @property
     def x_pixel_per_char(self) -> int:
@@ -23,44 +22,55 @@ class BrailleCanvas(Canvas):
 
         self.grid_rows = self.pixel_height // self.y_pixel_per_char
         self.grid_cols = self.pixel_width // self.x_pixel_per_char
-        self.grid = [[chr(0x2800) for _ in range(self.grid_cols)]
-                    for _ in range(self.grid_rows)]
-        self.colors = [[INVALID_COLOR for _ in range(self.grid_cols)]
-                      for _ in range(self.grid_rows)]
+        
+        
+        self.default_char = 0x2800
+        self.active_cells = [
+            [self.default_char] * self.grid_cols 
+            for _ in range(self.grid_rows)
+        ]
+        
+        self.default_color = Color.GREEN
+        self.active_colors = [
+            [self.default_color] * self.grid_cols 
+            for _ in range(self.grid_rows)
+        ]
 
+        # Precompute bit values for faster pixel calculations
+        self.bit_table = [
+            [0x01, 0x02, 0x04, 0x40],   # x=0
+            [0x08, 0x10, 0x20, 0x80],   # x=1
+        ]
+    
     def _set_pixel(self, px: int, py: int, color: ColorType, blend: bool):
         cx = px // self.x_pixel_per_char
         cy = py // self.y_pixel_per_char
+        
         if not (0 <= cx < self.grid_cols and 0 <= cy < self.grid_rows):
             return
 
-        x_in = px % self.x_pixel_per_char
-        y_in = py % self.y_pixel_per_char
+        try:
+            x_in = px % self.x_pixel_per_char
+            y_in = py % self.y_pixel_per_char
+            bit = self.bit_table[x_in][y_in]
+        except IndexError:
+            return
 
-        # Braille bit mapping
-        bit = 0
-        if x_in == 0:
-            if y_in == 0: bit = 0x01
-            elif y_in == 1: bit = 0x02
-            elif y_in == 2: bit = 0x04
-            elif y_in == 3: bit = 0x40
-        else:
-            if y_in == 0: bit = 0x08
-            elif y_in == 1: bit = 0x10
-            elif y_in == 2: bit = 0x20
-            elif y_in == 3: bit = 0x80
+        # Update cell bits
+        self.active_cells[cy][cx] |= bit
+        
+        # Update color (simple overwrite)
+        self.active_colors[cy][cx] = color
 
-        # Update Braille character
-        current = ord(self.grid[cy][cx]) - 0x2800
-        self.grid[cy][cx] = chr(0x2800 + (current | bit))
-
-        # Update color (simplified)
-        current_color = self.colors[cy][cx]
-        if current_color == INVALID_COLOR or not blend:
-            self.colors[cy][cx] = color
-        else:
-            self.colors[cy][cx] = color  # Simple overwrite for demo
-
+    def render(self) -> str:
+        """Efficient rendering with pre-allocated strings"""
+        return '\n'.join(
+            ''.join(
+                ColorType(self.active_colors[row][col]).apply(chr(self.active_cells[row][col]))
+                for col in range(self.grid_cols)
+            )
+            for row in range(self.grid_rows)
+        )
 
 # Demo Script
 if __name__ == "__main__":
@@ -76,7 +86,6 @@ if __name__ == "__main__":
         blend=False
     )
 
-    # Draw diagonal lines - no need to manually scale coordinates
     points = [
         (0, 16),
         (5, 0),
