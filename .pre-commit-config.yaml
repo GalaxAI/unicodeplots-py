@@ -13,7 +13,7 @@ repos:
         stages: [commit-msg]
         args: []
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.6.6
+    rev: 0.6.9
     hooks:
       - id: pip-compile
         args: [pyproject.toml, -o, requirements.txt]
