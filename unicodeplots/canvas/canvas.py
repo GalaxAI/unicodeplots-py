@@ -1,6 +1,6 @@
 import math
 from abc import ABC, abstractmethod
-from typing import Callable, Optional
+from typing import Any, Callable, List, Optional
 
 from unicodeplots.utils import CanvasParams, ColorType
 
@@ -27,6 +27,9 @@ class Canvas(ABC):
 
         self.grid_rows = self.pixel_height // self.y_pixel_per_char
         self.grid_cols = self.pixel_width // self.x_pixel_per_char
+
+        self.active_cells: List[List[Any]] = [[] for _ in range(self.grid_rows)]
+        self.active_colors: List[List[ColorType]] = [[] for _ in range(self.grid_rows)]
 
     def _align_to_char_length(self, length: int) -> int:
         """Ensure length is aligned to character cell boundaries"""
@@ -83,6 +86,19 @@ class Canvas(ABC):
     def height(self) -> int:
         """Get the logical height of the canvas"""
         return self._params.height
+
+    @property
+    def rows(self) -> int:
+        """Returns the number of active rows in the canvas."""
+        if self.cols:
+            return len(self.active_cells[0])
+        else:
+            return 0
+
+    @property
+    def cols(self) -> int:
+        """Returns the number of active columns in the canvas."""
+        return len(self.active_cells)
 
     @property
     def resolution(self) -> float:
