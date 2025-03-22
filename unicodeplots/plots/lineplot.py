@@ -20,17 +20,14 @@ class Lineplot:
         """
         # Parse data from args first
         canvas_kwargs = self._extract_canvas_params(kwargs)
-        self.canvas_params = CanvasParams(**canvas_kwargs)
-        self.canvas = BrailleCanvas(self.canvas_params)
+        self.canvas = BrailleCanvas(CanvasParams(**canvas_kwargs))
 
         self.other_kwargs = kwargs
         self.datasets = self._parse_arguments(*args)
         self.min_x, self.max_x, self.min_y, self.max_y = self._compute_data_bounds()
-        # Create canvas with validated parameters
         self.colors = kwargs.get("colors", [color for color in Color if color != Color.INVALID])
         self.auto_scale = kwargs.get("auto_scale", True)
 
-        # Create canvas with extracted parameters
         self.plot()
 
     @staticmethod
