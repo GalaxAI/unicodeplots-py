@@ -54,63 +54,113 @@ class Lineplot:
         """
         datasets: List[Tuple[List[Union[float, int]], List[Union[float, int]]]] = []
         y_scale = self.canvas.yscale
-
+        x_data: List[Union[float, int]] = []
+        y_data: List[Union[float, int]] = []
         if len(args) == 0:
             return datasets
 
         # Case 1: Single array/list - treat as y values
         if len(args) == 1:
             y_values = args[0]
-            x_data: List[Union[float, int]] = list(range(len(y_values)))
+            x_data = list(range(len(y_values)))
             # Apply y_scale transformation and validate data types
-            y_data: List[Union[float, int]] = []
             for y in y_values:
                 if not isinstance(y, (int, float)):
                     raise TypeError(f"Y values must be numbers, got {type(y)}")
                 y_data.append(y_scale(y))
 
-            datasets.append((x_data, y_data))
+            # Type assertion for mypy
+            datasets.append((
+                x_data,  # type: ignore
+                y_data,  # type: ignore
+            ))
             return datasets
 
         # Case 2: x_data, y_data or x_data, callable
         if len(args) == 2:
-            x_data = args[0]
+            # Validate and convert x_data
+            for x in args[0]:
+                if isinstance(x, (int, float)):
+                    x_data.append(x)
+                else:
+                    raise TypeError(f"X values must be numbers, got {type(x)}")
 
             # If second arg is callable, apply to x_data
             if callable(args[1]):
-                y_data = [args[1](x) for x in x_data]
+                y_values = [args[1](x) for x in x_data]
             else:
-                y_data = args[1]
+                y_values = args[1]
 
-            # Apply y_scale transformation
-            y_data = [y_scale(y) for y in y_data]
-            datasets.append((x_data, y_data))
+            # Apply y_scale transformation and validate data types
+            for y in y_values:
+                if isinstance(y, (int, float)):
+                    y_data.append(y_scale(y))
+                else:
+                    raise TypeError(f"Y values must be numbers, got {type(y)}")
+
+            # Type assertion for mypy
+            datasets.append((
+                x_data,  # type: ignore
+                y_data,  # type: ignore
+            ))
             return datasets
 
         # Case 3: x_range, *callables or other more complex combinations
         if len(args) >= 3 and isinstance(args[0], (list, tuple)) and len(args[0]) == 3:
             # Interpret first arg as (start, end, num_points)
             start, end, points = args[0]
+            if not all(isinstance(v, (int, float)) for v in [start, end]):
+                raise TypeError("Start and end values must be numbers")
+            if not isinstance(points, int) or points <= 0:
+                raise TypeError("Number of points must be a positive integer")
+
             x_data = [start + (end - start) * i / (points - 1) for i in range(points)]
 
             # Process each callable to create multiple datasets
             for func in args[1:]:
                 if callable(func):
-                    y_data = [func(x) for x in x_data]
-                    datasets.append((x_data, y_data))
+                    y_values = [func(x) for x in x_data]
+                    # Validate and transform y values
+                    y_data = []
+                    for y in y_values:
+                        if not isinstance(y, (int, float)):
+                            raise TypeError(f"Function must return numeric values, got {type(y)}")
+                        y_data.append(y_scale(y))
+
+                    # Type assertion for mypy
+                    datasets.append((
+                        x_data,  # type: ignore
+                        y_data,  # type: ignore
+                    ))
 
             return datasets
 
         # Process regular alternating x, y, x, y, ... arguments
         for i in range(0, len(args), 2):
             if i + 1 < len(args):
-                x_data = args[i]
+                # Validate and convert x_data
+                for x in args[i]:
+                    if not isinstance(x, (int, float)):
+                        raise TypeError(f"X values must be numbers, got {type(x)}")
+                    x_data.append(x)
+
                 # If second arg is callable, apply to x_data
                 if callable(args[i + 1]):
-                    y_data = [args[i + 1](x) for x in x_data]
+                    y_values = [args[i + 1](x) for x in x_data]
                 else:
-                    y_data = args[i + 1]
-                datasets.append((x_data, y_data))
+                    y_values = args[i + 1]
+
+                # Validate and transform y values
+                for y in y_values:
+                    if not isinstance(y, (int, float)):
+                        raise TypeError(f"Y values must be numbers, got {type(y)}")
+                    y_data.append(y_scale(y))
+
+                # Type assertion for mypy
+                datasets.append((
+                    x_data,  # type: ignore
+                    y_data,  # type: ignore
+                ))
 
         return datasets
 
@@ -218,12 +268,11 @@ if __name__ == "__main__":
     # Generate data with exponential growth
     x_log = list(range(1, 11))
     y_log = [2**n for n in x_log]
-
     print("With Linear Scale:")
     print(Lineplot(x_log, y_log).render())
 
     print("\nWith Logarithmic Scale (log2):")
-    print(Lineplot(x_log, y_log, y_scale=lambda y: math.log2(y)).render())
+    print(Lineplot(x_log, y_log, yscale=lambda y: math.log2(y)).render())
 
     import math
     from pathlib import Path

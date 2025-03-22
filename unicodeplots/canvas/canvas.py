@@ -59,17 +59,15 @@ class Canvas(ABC):
 
     def x_to_pixel(self, x: float) -> float:
         """Convert logical x coordinate to pixel space"""
-        scaled = self.xscale(x)
         if self.xflip:
-            return (1 - (scaled - self.origin_x) / self.width) * self.pixel_width
-        return ((scaled - self.origin_x) / self.width) * self.pixel_width
+            return (1 - (x - self.origin_x) / self.width) * self.pixel_width
+        return ((x - self.origin_x) / self.width) * self.pixel_width
 
     def y_to_pixel(self, y: float) -> float:
         """Convert logical y coordinate to pixel space"""
-        scaled = self.yscale(y)
         if self.yflip:
-            return (scaled - self.origin_y) / self.height * self.pixel_height
-        return (1 - (scaled - self.origin_y) / self.height) * self.pixel_height
+            return (y - self.origin_y) / self.height * self.pixel_height
+        return (1 - (y - self.origin_y) / self.height) * self.pixel_height
 
     @property
     def params(self) -> CanvasParams:
