@@ -1,8 +1,8 @@
 from dataclasses import fields
-from typing import List, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 from unicodeplots.canvas import BrailleCanvas
-from unicodeplots.utils import CanvasParams, Color
+from unicodeplots.utils import CanvasParams, Color, ColorType
 
 
 class Lineplot:
@@ -10,7 +10,7 @@ class Lineplot:
     A class for creating line plots with Unicode characters.
     """
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, colors: Optional[Union[ColorType, List[ColorType]]] = None, **kwargs) -> None:
         """
         Initialize a line plot with data and styling parameters.
 
@@ -25,7 +25,7 @@ class Lineplot:
         self.other_kwargs = kwargs
         self.datasets = self._parse_arguments(*args)
         self.min_x, self.max_x, self.min_y, self.max_y = self._compute_data_bounds()
-        self.colors = kwargs.get("colors", [color for color in Color if color != Color.INVALID])
+        self.colors = colors or [color for color in Color if color != Color.INVALID]
         self.auto_scale = kwargs.get("auto_scale", True)
 
         self.plot()
