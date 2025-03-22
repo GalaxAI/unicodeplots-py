@@ -27,7 +27,7 @@ class Lineplot:
         self.datasets = self._parse_arguments(*args)
         self.min_x, self.max_x, self.min_y, self.max_y = self._compute_data_bounds()
         # Create canvas with validated parameters
-        self.colors = kwargs.get("colors", [Color.GREEN, Color.RED, Color.BLUE, Color.YELLOW])
+        self.colors = kwargs.get("colors", [color for color in Color if color != Color.INVALID])
         self.auto_scale = kwargs.get("auto_scale", True)
 
         # Create canvas with extracted parameters
