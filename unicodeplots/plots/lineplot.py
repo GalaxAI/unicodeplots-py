@@ -25,7 +25,7 @@ class Lineplot:
 
         self.other_kwargs = kwargs
         self.datasets = self._parse_arguments(*args)
-
+        self.min_x, self.max_x, self.min_y, self.max_y = self._compute_data_bounds()
         # Create canvas with validated parameters
         self.colors = kwargs.get("colors", [Color.GREEN, Color.RED, Color.BLUE, Color.YELLOW])
         self.auto_scale = kwargs.get("auto_scale", True)
@@ -207,18 +207,15 @@ class Lineplot:
         if not self.datasets:
             return self
 
-        # Compute data bounds for auto-scaling
-        min_x, max_x, min_y, max_y = self._compute_data_bounds()
-
         # Update canvas parameters if auto_scale is enabled
         if self.auto_scale:
             # Set the origin point to match the data bounds
-            self.canvas.params.origin_x = min_x
-            self.canvas.params.origin_y = min_y
+            self.canvas.params.origin_x = self.min_x
+            self.canvas.params.origin_y = self.min_y
 
             # Update width and height to match data range
-            self.canvas.params.width = max_x - min_x
-            self.canvas.params.height = max_y - min_y
+            self.canvas.params.width = self.max_x - self.min_x
+            self.canvas.params.height = self.max_y - self.min_y
 
         # Draw each dataset with its own color
         for idx, (x_data, y_data) in enumerate(self.datasets):
