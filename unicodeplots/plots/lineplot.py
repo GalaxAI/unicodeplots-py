@@ -138,6 +138,8 @@ class Lineplot:
         # Process regular alternating x, y, x, y, ... arguments
         for i in range(0, len(args), 2):
             if i + 1 < len(args):
+                x_data = []
+                y_data = []
                 # Validate and convert x_data
                 for x in args[i]:
                     if not isinstance(x, (int, float)):
@@ -249,7 +251,6 @@ if __name__ == "__main__":
 
     # Generate x values for trig functions
     x_vals = [x / 10 for x in range(-31, 62)]
-
     print("\n" + "=" * 60)
     print("EXAMPLE 2: Trigonometric Functions")
     print("=" * 60)
@@ -273,7 +274,6 @@ if __name__ == "__main__":
 
     print("\nWith Logarithmic Scale (log2):")
     print(Lineplot(x_log, y_log, yscale=lambda y: math.log2(y)).render())
-
     import math
     from pathlib import Path
 
