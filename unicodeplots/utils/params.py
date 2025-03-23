@@ -6,12 +6,13 @@ T = TypeVar("T")
 
 
 def dataclass_filter_kwargs(cls: Type[T]) -> Type[T]:
-    """Decorator to create a dataclass that silently ignores invalid kwargs"""
+    """Decorator to create a dataclass that ignores invalid kwargs"""
     cls = dataclass(cls)
 
     original_init = cls.__init__
 
     # Define our new __init__
+    # TODO: Handle missing kwargs,
     @wraps(original_init)
     def __init__(self: Any, **kwargs: Any) -> None:
         valid_fields = {f.name for f in fields(cast("type[Any]", cls))}

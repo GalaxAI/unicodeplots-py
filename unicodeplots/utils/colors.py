@@ -7,9 +7,9 @@ class ColorType(IntEnum):
     """ANSI color codes with named constants and integer compatibility"""
 
     INVALID = INVALID_COLOR
+    BLUE = 39
+    GREEN = 114
     RED = 196
-    GREEN = 46
-    BLUE = 21
     WHITE = 15
     BLACK = 0
     ORANGE = 208

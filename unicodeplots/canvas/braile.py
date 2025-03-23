@@ -60,6 +60,7 @@ class BrailleCanvas(Canvas):
         """Draw a line between logical coordinates using supersampled Bresenham for smoother curves"""
         # Convert to high-resolution pixel coordinates (8x supersampling)
         # NOTE: If this really gives bad performance we can only do super sampling for curves or as a flag
+        # Or go back to d34b commit
         SUPERSAMPLE = 8
         px1 = self.x_to_pixel(x1) * SUPERSAMPLE
         py1 = self.y_to_pixel(y1) * SUPERSAMPLE
