@@ -1,7 +1,7 @@
 from typing import List, Optional, Tuple, Union
 
 from unicodeplots.canvas import BrailleCanvas
-from unicodeplots.utils import CanvasParams, Color, ColorType
+from unicodeplots.utils import Color, ColorType
 
 
 class Lineplot:
@@ -9,21 +9,50 @@ class Lineplot:
     A class for creating line plots with Unicode characters.
     """
 
-    def __init__(self, *args, colors: Optional[Union[ColorType, List[ColorType]]] = None, **kwargs) -> None:
+    def __init__(
+        self,
+        *args,
+        colors: Optional[Union[ColorType, List[ColorType]]] = None,
+        show_axes: bool = False,
+        title: Optional[str] = "",
+        xlabel: Optional[str] = "",
+        ylabel: Optional[str] = "",
+        legend: Optional[bool] = False,
+        show_border: Optional[bool] = None,
+        border: Optional[str] = "single",
+        **kwargs,
+    ) -> None:
         """
         Initialize a line plot with data and styling parameters.
 
         Args:
-            *args: Data to plot in various formats (see _parse_arguments)
+            *args: Data to plot in various formats
+            show_axes: Plots xy axis on the canvas.
             colors: Colors of plots
-            **kwargs: Styling parameters and canvas configuration
+            title: Plot title
+            xlabel: X-axis label
+            ylabel: Y-axis label
+            legend: Whether to show a legend
+            show_border: Whether to show a border (auto-determined if None)
+            border_style: Style of border to show ("single", "double", "bold", etc.)
+            **kwargs: Styling parameters for canvas and box configuration
         """
-        # Parse data from args first
-        self.canvas = BrailleCanvas(CanvasParams(**kwargs))
+        self.title = title
+        self.xlabel = xlabel
+        self.ylabel = ylabel
+        self.legend = legend
+        self.border_style = border
 
-        self.other_kwargs = kwargs
+        # Determine whether to show border based on decorative elements
+        self.show_border = show_border
+        if show_border is None:
+            self.show_border = bool(title or xlabel or ylabel or legend)
+
+        # Parse data from args first
+        self.canvas = BrailleCanvas(**kwargs)
         self.datasets = self._parse_arguments(*args)
         self.min_x, self.max_x, self.min_y, self.max_y = self._compute_data_bounds()
+        self.show_axes = show_axes
         self.colors = colors or [color for color in Color if color != Color.INVALID]
         self.auto_scale = kwargs.get("auto_scale", True)
         self.plot()
@@ -51,7 +80,7 @@ class Lineplot:
         # Case 1: Single array/list - treat as y values
         if len(args) == 1:
             y_values = args[0]
-            x_data = list(range(len(y_values)))
+            x_data = y_values
             # Apply y_scale transformation and validate data types
             for y in y_values:
                 if not isinstance(y, (int, float)):
@@ -206,6 +235,13 @@ class Lineplot:
             self.canvas.params.width = self.max_x - self.min_x
             self.canvas.params.height = self.max_y - self.min_y
 
+        # add xy axis
+        if self.show_axes:
+            x_axis_y = max(0, self.min_y) if 0 >= self.min_y and 0 <= self.max_y else self.min_y
+            self.canvas.line(self.min_x, x_axis_y, self.max_x, x_axis_y, color="WHITE")
+            y_axis_x = max(0, self.min_x) if 0 >= self.min_x and 0 <= self.max_x else self.min_x
+            self.canvas.line(y_axis_x, self.min_y, y_axis_x, self.max_y, color="WHITE")
+
         # Draw each dataset with its own color
         for idx, (x_data, y_data) in enumerate(self.datasets):
             color = self.colors[idx % len(self.colors)]
@@ -213,7 +249,6 @@ class Lineplot:
             for i in range(1, len(x_data)):
                 # Draw the line segment - canvas will handle the scaling
                 self.canvas.line(x_data[i - 1], y_data[i - 1], x_data[i], y_data[i], color=color)
-
         return self
 
     def render(self) -> str:
@@ -233,7 +268,7 @@ if __name__ == "__main__":
     print("EXAMPLE 1: Simple Linear Plot")
     print("=" * 60)
     print(Lineplot([1, 2, 7], [9, -6, 8]).render())
-    print(Lineplot(list(range(10))).render())
+    print(Lineplot(list(range(-5, 5))).render())
 
     # Generate x values for trig functions
     x_vals = [x / 10 for x in range(-31, 62)]
