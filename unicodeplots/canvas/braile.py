@@ -57,35 +57,46 @@ class BrailleCanvas(Canvas):
         self.active_colors[cy][cx] = color
 
     def line(self, x1: float, y1: float, x2: float, y2: float, color: ColorType):
-        """Draw a line between logical coordinates (x1,y1) and (x2,y2) using Bresenham's algorithm"""
+        """Draw a line between logical coordinates using supersampled Bresenham for smoother curves"""
+        # Convert to high-resolution pixel coordinates (8x supersampling)
+        # NOTE: If this really gives bad performance we can only do super sampling for curves or as a flag
+        SUPERSAMPLE = 8
+        px1 = self.x_to_pixel(x1) * SUPERSAMPLE
+        py1 = self.y_to_pixel(y1) * SUPERSAMPLE
+        px2 = self.x_to_pixel(x2) * SUPERSAMPLE
+        py2 = self.y_to_pixel(y2) * SUPERSAMPLE
 
-        # Convert to pixel coordinates and round to nearest integer
-        px1 = int(round(self.x_to_pixel(x1)))
-        py1 = int(round(self.y_to_pixel(y1)))
-        px2 = int(round(self.x_to_pixel(x2)))
-        py2 = int(round(self.y_to_pixel(y2)))
+        # Standard Bresenham at high resolution
+        px1, py1 = int(round(px1)), int(round(py1))
+        px2, py2 = int(round(px2)), int(round(py2))
 
-        # Bresenham's algorithm implementation
         dx = abs(px2 - px1)
         dy = abs(py2 - py1)
         sx = 1 if px1 < px2 else -1
         sy = 1 if py1 < py2 else -1
         err = dx - dy
 
-        current_x = px1
-        current_y = py1
+        # Use a set to collect unique final pixels
+        pixels = set()
 
         while True:
-            self._set_pixel(current_x, current_y, color)
-            if current_x == px2 and current_y == py2:
+            # Convert supersampled coordinates back to normal resolution
+            pixels.add((px1 // SUPERSAMPLE, py1 // SUPERSAMPLE))
+
+            if px1 == px2 and py1 == py2:
                 break
+
             e2 = 2 * err
             if e2 > -dy:
                 err -= dy
-                current_x += sx
+                px1 += sx
             if e2 < dx:
                 err += dx
-                current_y += sy
+                py1 += sy
+
+        # Draw all collected pixels
+        for x, y in pixels:
+            self._set_pixel(x, y, color)
 
     def render(self) -> str:
         """Efficient rendering with pre-allocated strings"""
