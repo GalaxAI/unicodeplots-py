@@ -1,4 +1,3 @@
-from dataclasses import fields
 from typing import List, Optional, Tuple, Union
 
 from unicodeplots.canvas import BrailleCanvas
@@ -16,25 +15,18 @@ class Lineplot:
 
         Args:
             *args: Data to plot in various formats (see _parse_arguments)
+            colors: Colors of plots
             **kwargs: Styling parameters and canvas configuration
         """
         # Parse data from args first
-        canvas_kwargs = self._extract_canvas_params(kwargs)
-        self.canvas = BrailleCanvas(CanvasParams(**canvas_kwargs))
+        self.canvas = BrailleCanvas(CanvasParams(**kwargs))
 
         self.other_kwargs = kwargs
         self.datasets = self._parse_arguments(*args)
         self.min_x, self.max_x, self.min_y, self.max_y = self._compute_data_bounds()
         self.colors = colors or [color for color in Color if color != Color.INVALID]
         self.auto_scale = kwargs.get("auto_scale", True)
-
         self.plot()
-
-    @staticmethod
-    def _extract_canvas_params(all_kwargs: dict) -> dict:
-        """Extract kwargs matching CanvasParams fields, return validated subset."""
-        param_fields = {f.name for f in fields(CanvasParams)}
-        return {k: v for k, v in all_kwargs.items() if k in param_fields}
 
     def _parse_arguments(self, *args) -> List[Tuple[List[Union[float, int]], List[Union[float, int]]]]:
         """

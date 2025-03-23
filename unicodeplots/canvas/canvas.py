@@ -1,25 +1,17 @@
 import math
 from abc import ABC, abstractmethod
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List
 
 from unicodeplots.utils import CanvasParams, ColorType
 
 
 class Canvas(ABC):
-    def __init__(self, params: Optional[CanvasParams] = None, **kwargs):
-        if params is None:
-            params = CanvasParams()
-
-        for key, value in kwargs.items():
-            if hasattr(params, key):
-                setattr(params, key, value)
-
-        # Store params
-        self._params = params
+    def __init__(self, **kwargs):
+        self._params = CanvasParams(**kwargs)
 
         # Calculate pixel dimensions based on logical dimensions and resolution
-        self.pixel_width = math.ceil(params.width * params.resolution)
-        self.pixel_height = math.ceil(params.height * params.resolution)
+        self.pixel_width = math.ceil(self.width * self.resolution)
+        self.pixel_height = math.ceil(self.height * self.resolution)
 
         # Ensure pixel dimensions are multiples of character cell dimensions
         self.pixel_width = self._align_to_char_length(self.pixel_width)

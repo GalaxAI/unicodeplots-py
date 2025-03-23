@@ -1,8 +1,29 @@
-from dataclasses import dataclass
-from typing import Callable
+from dataclasses import dataclass, field, fields
+from functools import wraps
+from typing import Any, Callable, Type, TypeVar, cast
+
+T = TypeVar("T")
 
 
-@dataclass
+def dataclass_filter_kwargs(cls: Type[T]) -> Type[T]:
+    """Decorator to create a dataclass that silently ignores invalid kwargs"""
+    cls = dataclass(cls)
+
+    original_init = cls.__init__
+
+    # Define our new __init__
+    @wraps(original_init)
+    def __init__(self: Any, **kwargs: Any) -> None:
+        valid_fields = {f.name for f in fields(cast("type[Any]", cls))}
+        filtered_kwargs = {k: v for k, v in kwargs.items() if k in valid_fields}
+        original_init(self, **filtered_kwargs)
+
+    setattr(cls, "__init__", __init__)
+
+    return cls
+
+
+@dataclass_filter_kwargs
 class CanvasParams:
     """Parameters for the plotting canvas."""
 
@@ -13,6 +34,16 @@ class CanvasParams:
     origin_y: float = 0.0
     xflip: bool = False
     yflip: bool = False
-    # blend: bool = True
-    xscale: Callable[[float], float] = lambda x: x
-    yscale: Callable[[float], float] = lambda y: y
+    xscale: Callable[[float], float] = field(default_factory=lambda: lambda x: x)
+    yscale: Callable[[float], float] = field(default_factory=lambda: lambda y: y)
+
+
+@dataclass_filter_kwargs
+class BoxParams:
+    """Params for the box."""
+
+    border: str = "single"
+    title: str = "Title"
+    xlabel: str = "x"
+    ylabel: str = "y"
+    legend: bool = False
