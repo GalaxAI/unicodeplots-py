@@ -26,7 +26,7 @@ class BrailleCanvas(Canvas):
         self.default_char = 0x2800
         self.active_cells = [[self.default_char] * self.grid_cols for _ in range(self.grid_rows)]
 
-        self.default_color = Color.GREEN
+        self.default_color = Color.WHITE
         self.active_colors = [[self.default_color] * self.grid_cols for _ in range(self.grid_rows)]
 
         # Precompute bit values for faster pixel calculations

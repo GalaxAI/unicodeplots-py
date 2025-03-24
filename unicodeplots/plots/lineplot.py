@@ -1,6 +1,7 @@
 from typing import List, Optional, Tuple, Union
 
 from unicodeplots.canvas import BrailleCanvas
+from unicodeplots.components import BorderBox
 from unicodeplots.utils import Color, ColorType
 
 
@@ -14,12 +15,11 @@ class Lineplot:
         *args,
         colors: Optional[Union[ColorType, List[ColorType]]] = None,
         show_axes: bool = False,
-        title: Optional[str] = "",
-        xlabel: Optional[str] = "",
-        ylabel: Optional[str] = "",
-        legend: Optional[bool] = False,
-        show_border: Optional[bool] = None,
-        border: Optional[str] = "single",
+        title: Optional[str] = None,
+        xlabel: Optional[str] = None,
+        ylabel: Optional[str] = None,
+        border: Optional[str] = "",
+        legend: bool = False,
         **kwargs,
     ) -> None:
         """
@@ -27,14 +27,13 @@ class Lineplot:
 
         Args:
             *args: Data to plot in various formats
-            show_axes: Plots xy axis on the canvas.
+            show_axes: Plots x & y axis on the canvas.
             colors: Colors of plots
             title: Plot title
             xlabel: X-axis label
             ylabel: Y-axis label
             legend: Whether to show a legend
-            show_border: Whether to show a border (auto-determined if None)
-            border_style: Style of border to show ("single", "double", "bold", etc.)
+            border: Style of border to show ("single", "double", "ascii", "none")
             **kwargs: Styling parameters for canvas and box configuration
         """
         self.title = title
@@ -44,9 +43,7 @@ class Lineplot:
         self.border_style = border
 
         # Determine whether to show border based on decorative elements
-        self.show_border = show_border
-        if show_border is None:
-            self.show_border = bool(title or xlabel or ylabel or legend)
+        self.show_border = bool(title or xlabel or ylabel or legend or border)
 
         # Parse data from args first
         self.canvas = BrailleCanvas(**kwargs)
@@ -258,60 +255,82 @@ class Lineplot:
         Returns:
             str: The string representation of the plot
         """
-        return self.canvas.render()
+        raw_plot = self.canvas.render()
+
+        # If no decorative elements are requested, return the raw plot
+        if not self.show_border:
+            return raw_plot
+
+        plot_lines = raw_plot.splitlines()
+
+        border_box = BorderBox(width=self.canvas.rows, height=self.canvas.cols, border_type=self.border_style or "")
+
+        if self.title:
+            border_box.set_title(self.title)
+
+        if self.xlabel:
+            border_box.set_x_label(self.xlabel)
+
+        if self.ylabel:
+            border_box.set_y_label(self.ylabel)
+
+        border_box.set_ranges((self.min_x, self.max_x), (self.min_y, self.max_y))
+
+        # Add legend items if requested
+        if self.legend and hasattr(self, "legend_items"):
+            print("Note: This is not implemented yet")
+
+        framed_plot = border_box.render(plot_lines)
+        return "\n".join(framed_plot)
 
 
 if __name__ == "__main__":
     import math
 
-    print("\n" + "=" * 60)
-    print("EXAMPLE 1: Simple Linear Plot")
-    print("=" * 60)
-    print(Lineplot([1, 2, 7], [9, -6, 8]).render())
-    print(Lineplot(list(range(-5, 5))).render())
+    print(Lineplot([1, 2, 7], [9, -6, 8], show_border=True, title="EXAMPLE 1: Simple Linear Plot", xlabel="X", ylabel="Y").render())
+    print(Lineplot(list(range(-5, 5)), show_border=True, title="EXAMPLE 1: Range Plot", border="double").render())
 
     # Generate x values for trig functions
     x_vals = [x / 10 for x in range(-31, 62)]
-    print("\n" + "=" * 60)
-    print("EXAMPLE 2: Trigonometric Functions")
-    print("=" * 60)
-    print("SIN Function:")
-    print(Lineplot(x_vals, math.sin).render())
 
-    print("\nCOS Function:")
-    print(Lineplot(x_vals, math.cos).render())
+    print(Lineplot(x_vals, math.sin, show_border=True, title="EXAMPLE 2: Sine Function", xlabel="X", ylabel="sin(x)").render())
 
-    print("\nSIN + COS Together:")
-    print(Lineplot(x_vals, math.sin, x_vals, math.cos).render())
+    print(Lineplot(x_vals, math.cos, show_border=True, title="EXAMPLE 2: Cosine Function", xlabel="X", ylabel="cos(x)", border="ascii").render())
 
-    print("\n" + "=" * 60)
-    print("EXAMPLE 3: Logarithmic Scale Comparison")
-    print("=" * 60)
+    print(
+        Lineplot(x_vals, math.sin, x_vals, math.cos, show_border=True, title="EXAMPLE 2: Trigonometric Functions", xlabel="X", ylabel="Y", legend=True).render()
+    )
+
     # Generate data with exponential growth
     x_log = list(range(1, 11))
     y_log = [2**n for n in x_log]
-    print("With Linear Scale:")
-    print(Lineplot(x_log, y_log).render())
 
-    print("\nWith Logarithmic Scale (log2):")
-    print(Lineplot(x_log, y_log, yscale=lambda y: math.log2(y)).render())
-    import math
+    print(Lineplot(x_log, y_log, show_border=True, title="EXAMPLE 3: Exponential Growth (Linear Scale)", xlabel="X", ylabel="2^x").render())
+
+    print(
+        Lineplot(
+            x_log,
+            y_log,
+            yscale=lambda y: math.log2(y),
+            show_border=True,
+            title="EXAMPLE 3: Exponential Growth (Log Scale)",
+            xlabel="X",
+            ylabel="log₂(2^x)",
+            border="double",
+        ).render()
+    )
+
     from pathlib import Path
 
-    import torch
+    from torch import load
 
     save_path = Path("training_metrics.pt")
-    metrics = torch.load(save_path)
+    metrics = load(save_path)
     train_loss_per_step = metrics["train_loss_per_step"]
     train_acc_per_step = metrics["train_acc_per_step"]
-    print(f"Loaded pre-saved metrics from {save_path.resolve()}")
 
-    # Rest of the plotting code remains unchanged
-    steps = list(range(len(train_loss_per_step)))
+    steps = list(range(1, len(train_loss_per_step) + 1))
 
-    print("\nTraining Loss (per step):")
+    print(Lineplot(steps, train_loss_per_step, show_border=True, title="Training Loss", xlabel="Steps", ylabel="Loss").render())
 
-    print(Lineplot(steps, train_loss_per_step).render())
-
-    print("\nTraining Accuracy (per step):")
-    print(Lineplot(steps, train_acc_per_step).render())
+    print(Lineplot(steps, train_acc_per_step, show_border=True, title="Training Accuracy", xlabel="Steps", ylabel="Accuracy").render())
