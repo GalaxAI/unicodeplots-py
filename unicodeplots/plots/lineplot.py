@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple, Union
+from typing import Callable, Iterable, List, Optional, Sequence, Tuple, Union
 
 from unicodeplots.canvas import BrailleCanvas
 from unicodeplots.components import BorderBox
@@ -54,6 +54,53 @@ class Lineplot:
         self.auto_scale = kwargs.get("auto_scale", True)
         self.plot()
 
+    def _validate_data(self, data: Iterable, name: str) -> List[Union[float, int]]:
+        """Validate that data is an iterable of numbers."""
+        if not isinstance(data, Iterable) or isinstance(data, str):
+            raise TypeError(f"{name} data must be an iterable (list, tuple, etc.) of numbers, got {type(data)}")
+
+        validated: List[Union[float, int]] = []
+        for value in data:
+            if not isinstance(value, (int, float)):
+                raise TypeError(f"{name} values must be numbers (int or float), got {type(value)}")
+            validated.append(value)
+        return validated
+
+    def _process_dataset(
+        self,
+        x_raw: Sequence[Union[int, float]],
+        y_raw: Union[Sequence[Union[int, float]], Callable],
+        dataset_index: int = 0,  # For error messages
+    ) -> Tuple[List[Union[float, int]], List[Union[float, int]]]:
+        """Validates, potentially generates, and scales a single x, y dataset."""
+
+        # 1. Validate X data
+        validated_x = self._validate_data(x_raw, "X")
+
+        # 2. Obtain raw Y data (either directly or by applying callable)
+        actual_y_raw: Iterable[Union[int, float]]
+        if callable(y_raw):
+            try:
+                actual_y_raw = [y_raw(x) for x in validated_x]
+            except Exception as e:
+                raise ValueError(f"Error applying function to X data for dataset {dataset_index + 1}: {e}") from e
+            # Validate the results from the callable
+            validated_y = self._validate_data(actual_y_raw, f"Y (from function, dataset {dataset_index + 1})")
+        else:
+            actual_y_raw = y_raw  # type: ignore # Assuming y_raw is Sequence if not callable
+            # Validate the provided Y data
+            validated_y = self._validate_data(actual_y_raw, "Y")
+
+        # 3. Check length consistency
+        if len(validated_x) != len(validated_y):
+            raise ValueError(f"X and Y data length mismatch for dataset {dataset_index + 1}: {len(validated_x)} vs {len(validated_y)}")
+
+        # 4. Apply scaling
+        scaled_x = [self.canvas.xscale(x) for x in validated_x]
+        scaled_y = [self.canvas.yscale(y) for y in validated_y]
+
+        return scaled_x, scaled_y
+
     def _parse_arguments(self, *args) -> List[Tuple[List[Union[float, int]], List[Union[float, int]]]]:
         """
         Parse arguments similar to matplotlib.pyplot.plot
@@ -62,92 +109,38 @@ class Lineplot:
         - y_data only: [1, 2, 3] (x will be range(len(y)))
         - x_data, y_data: [1, 2, 3], [4, 5, 6]
         - x_data, callable: [1, 2, 3], lambda x: x**2
-        - x_range, *callables: (0, 10, 100), lambda x: x**2, lambda x: x**3
+        - Multiple pairs: x1, y1, x2, y2, ... (y can be data or callable)
 
         Returns:
-            List of (x_data, y_data) tuples
+            List of (x_data, y_data) tuples, scaled and validated.
         """
         datasets: List[Tuple[List[Union[float, int]], List[Union[float, int]]]] = []
-        y_scale = self.canvas.yscale
-        x_data: List[Union[float, int]] = []
-        y_data: List[Union[float, int]] = []
+
         if len(args) == 0:
             return datasets
 
         # Case 1: Single array/list - treat as y values
         if len(args) == 1:
-            y_values = args[0]
-            x_data = y_values
-            # Apply y_scale transformation and validate data types
-            for y in y_values:
-                if not isinstance(y, (int, float)):
-                    raise TypeError(f"Y values must be numbers, got {type(y)}")
-                y_data.append(y_scale(y))
-
-            # Type assertion for mypy
-            datasets.append((
-                x_data,  # type: ignore
-                y_data,  # type: ignore
-            ))
+            y_arg = args[0]
+            # Validate y first to determine length for x range
+            validated_y_for_len = self._validate_data(y_arg, "Y")
+            x_raw = list(range(len(validated_y_for_len)))
+            # We pass the original y_arg here, validation happens inside _process_dataset
+            scaled_x, scaled_y = self._process_dataset(x_raw, y_arg)
+            datasets.append((scaled_x, scaled_y))
             return datasets
 
-        # Case 2: x_data, y_data or x_data, callable
-        if len(args) == 2:
-            # Validate and convert x_data
-            for x in args[0]:
-                if isinstance(x, (int, float)):
-                    x_data.append(x)
-                else:
-                    raise TypeError(f"X values must be numbers, got {type(x)}")
+        # Case 2: Pairs of x, y or x, callable
+        if len(args) % 2 != 0:
+            raise ValueError(f"After the first argument, arguments must come in pairs (x, y) or (x, callable). Got {len(args)} arguments.")
 
-            # If second arg is callable, apply to x_data
-            if callable(args[1]):
-                y_values = [args[1](x) for x in x_data]
-            else:
-                y_values = args[1]
-
-            # Apply y_scale transformation and validate data types
-            for y in y_values:
-                if isinstance(y, (int, float)):
-                    y_data.append(y_scale(y))
-                else:
-                    raise TypeError(f"Y values must be numbers, got {type(y)}")
-
-            # Type assertion for mypy
-            datasets.append((
-                x_data,  # type: ignore
-                y_data,  # type: ignore
-            ))
-            return datasets
-
-        # Process regular alternating x, y, x, y, ... arguments
         for i in range(0, len(args), 2):
-            if i + 1 < len(args):
-                x_data = []
-                y_data = []
-                # Validate and convert x_data
-                for x in args[i]:
-                    if not isinstance(x, (int, float)):
-                        raise TypeError(f"X values must be numbers, got {type(x)}")
-                    x_data.append(x)
+            x_arg = args[i]
+            y_arg = args[i + 1]
+            dataset_index = i // 2
 
-                # If second arg is callable, apply to x_data
-                if callable(args[i + 1]):
-                    y_values = [args[i + 1](x) for x in x_data]
-                else:
-                    y_values = args[i + 1]
-
-                # Validate and transform y values
-                for y in y_values:
-                    if not isinstance(y, (int, float)):
-                        raise TypeError(f"Y values must be numbers, got {type(y)}")
-                    y_data.append(y_scale(y))
-
-                # Type assertion for mypy
-                datasets.append((
-                    x_data,  # type: ignore
-                    y_data,  # type: ignore
-                ))
+            scaled_x, scaled_y = self._process_dataset(x_arg, y_arg, dataset_index=dataset_index)
+            datasets.append((scaled_x, scaled_y))
 
         return datasets
 
@@ -252,55 +245,3 @@ class Lineplot:
 
         framed_plot = border_box.render(plot_lines)
         return "\n".join(framed_plot)
-
-
-if __name__ == "__main__":
-    import math
-
-    print(Lineplot([1, 2, 7], [9, -6, 8], show_border=True, title="EXAMPLE 1: Simple Linear Plot", xlabel="X", ylabel="Y").render())
-    print(Lineplot(list(range(-5, 5)), show_border=True, title="EXAMPLE 1: Range Plot", border="double").render())
-
-    # Generate x values for trig functions
-    x_vals = [x / 10 for x in range(-31, 62)]
-
-    print(Lineplot(x_vals, math.sin, show_border=True, title="EXAMPLE 2: Sine Function", xlabel="X", ylabel="sin(x)").render())
-
-    print(Lineplot(x_vals, math.cos, show_border=True, title="EXAMPLE 2: Cosine Function", xlabel="X", ylabel="cos(x)", border="ascii").render())
-
-    print(
-        Lineplot(x_vals, math.sin, x_vals, math.cos, show_border=True, title="EXAMPLE 2: Trigonometric Functions", xlabel="X", ylabel="Y", legend=True).render()
-    )
-
-    # Generate data with exponential growth
-    x_log = list(range(1, 11))
-    y_log = [2**n for n in x_log]
-
-    print(Lineplot(x_log, y_log, show_border=True, title="EXAMPLE 3: Exponential Growth (Linear Scale)", xlabel="X", ylabel="2^x").render())
-
-    print(
-        Lineplot(
-            x_log,
-            y_log,
-            yscale=lambda y: math.log2(y),
-            show_border=True,
-            title="EXAMPLE 3: Exponential Growth (Log Scale)",
-            xlabel="X",
-            ylabel="log₂(2^x)",
-            border="double",
-        ).render()
-    )
-
-    from pathlib import Path
-
-    from torch import load
-
-    save_path = Path("training_metrics.pt")
-    metrics = load(save_path)
-    train_loss_per_step = metrics["train_loss_per_step"]
-    train_acc_per_step = metrics["train_acc_per_step"]
-
-    steps = list(range(1, len(train_loss_per_step) + 1))
-
-    print(Lineplot(steps, train_loss_per_step, show_border=True, title="Training Loss", xlabel="Steps", ylabel="Loss").render())
-
-    print(Lineplot(steps, train_acc_per_step, show_border=True, title="Training Accuracy", xlabel="Steps", ylabel="Accuracy").render())
