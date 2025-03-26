@@ -120,36 +120,6 @@ class Lineplot:
             ))
             return datasets
 
-        # Case 3: x_range, *callables or other more complex combinations
-        if len(args) >= 3 and isinstance(args[0], (list, tuple)) and len(args[0]) == 3:
-            # Interpret first arg as (start, end, num_points)
-            start, end, points = args[0]
-            if not all(isinstance(v, (int, float)) for v in [start, end]):
-                raise TypeError("Start and end values must be numbers")
-            if not isinstance(points, int) or points <= 0:
-                raise TypeError("Number of points must be a positive integer")
-
-            x_data = [start + (end - start) * i / (points - 1) for i in range(points)]
-
-            # Process each callable to create multiple datasets
-            for func in args[1:]:
-                if callable(func):
-                    y_values = [func(x) for x in x_data]
-                    # Validate and transform y values
-                    y_data = []
-                    for y in y_values:
-                        if not isinstance(y, (int, float)):
-                            raise TypeError(f"Function must return numeric values, got {type(y)}")
-                        y_data.append(y_scale(y))
-
-                    # Type assertion for mypy
-                    datasets.append((
-                        x_data,  # type: ignore
-                        y_data,  # type: ignore
-                    ))
-
-            return datasets
-
         # Process regular alternating x, y, x, y, ... arguments
         for i in range(0, len(args), 2):
             if i + 1 < len(args):
