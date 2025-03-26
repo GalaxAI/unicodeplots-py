@@ -36,6 +36,7 @@ lint.select = [
 ]
 
 exclude = [
+    "tests/snapshots/",
     ".bzr",
     ".direnv",
     ".eggs",
