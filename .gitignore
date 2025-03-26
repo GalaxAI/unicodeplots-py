@@ -1,4 +1,5 @@
 # Config related
+*.vscode
 
 ## I don't want uv.lock
 *.lock
