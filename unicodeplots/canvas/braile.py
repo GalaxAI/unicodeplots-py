@@ -13,6 +13,8 @@ class BrailleCanvas(Canvas):
     def y_pixel_per_char(self) -> int:
         return 4
 
+    _SUPERSAMPLE: int = 8
+
     def __init__(self, params: Optional[CanvasParams] = None, **kwargs):
         """
         Create a Braille-based canvas for unicode plotting.
@@ -22,7 +24,6 @@ class BrailleCanvas(Canvas):
             **kwargs: Additional parameters that override values in params if provided
         """
         super().__init__(params=params, **kwargs)
-        self.SUPERSAMPLE: int = 8
         self.default_char = 0x2800
         self.active_cells = [[self.default_char] * self.grid_cols for _ in range(self.grid_rows)]
 
@@ -69,7 +70,7 @@ class BrailleCanvas(Canvas):
         px_curr, py_curr = px1, py1
 
         while True:
-            pixels.add((px_curr // self.SUPERSAMPLE, py_curr // self.SUPERSAMPLE))
+            pixels.add((px_curr // self._SUPERSAMPLE, py_curr // self._SUPERSAMPLE))
 
             if px_curr == px2 and py_curr == py2:
                 break
@@ -87,12 +88,12 @@ class BrailleCanvas(Canvas):
             self._set_pixel(p_x, p_y, color)
 
     def line(self, x1: float, y1: float, x2: float, y2: float, color: ColorType):
-        """Draw a line between logical coordinates using supersampled Bresenham for smoother curves"""
+        """Draw a line between logical coordinates using self._SUPERSAMPLEd Bresenham for smoother curves"""
 
-        px1 = self.x_to_pixel(x1) * self.SUPERSAMPLE
-        py1 = self.y_to_pixel(y1) * self.SUPERSAMPLE
-        px2 = self.x_to_pixel(x2) * self.SUPERSAMPLE
-        py2 = self.y_to_pixel(y2) * self.SUPERSAMPLE
+        px1 = self.x_to_pixel(x1) * self._SUPERSAMPLE
+        py1 = self.y_to_pixel(y1) * self._SUPERSAMPLE
+        px2 = self.x_to_pixel(x2) * self._SUPERSAMPLE
+        py2 = self.y_to_pixel(y2) * self._SUPERSAMPLE
 
         # Standard Bresenham at high resolution
         px1, py1 = int(round(px1)), int(round(py1))
