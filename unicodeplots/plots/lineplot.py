@@ -198,8 +198,9 @@ class Lineplot:
         # add xy axis
         if self.show_axes:
             x_axis_y = max(0, self.min_y) if 0 >= self.min_y and 0 <= self.max_y else self.min_y
-            self.canvas.line(self.min_x, x_axis_y, self.max_x, x_axis_y, color="WHITE")
             y_axis_x = max(0, self.min_x) if 0 >= self.min_x and 0 <= self.max_x else self.min_x
+
+            self.canvas.line(self.min_x, x_axis_y, self.max_x, x_axis_y, color="WHITE")
             self.canvas.line(y_axis_x, self.min_y, y_axis_x, self.max_y, color="WHITE")
 
         # Draw each dataset with its own color

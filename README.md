@@ -8,6 +8,7 @@ Unicode plotting library designed for use in python.
 # Supported backends
 
 - [x] python
+> Support for other backends will come very late
 - [ ] numpy
 - [ ] pytorch
 - [ ] tinygrad
