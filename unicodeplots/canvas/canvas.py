@@ -6,8 +6,8 @@ from unicodeplots.utils import CanvasParams, ColorType
 
 
 class Canvas(ABC):
-    _x_pixels = 2
-    _y_pixels = 4
+    _x_pixels = 1
+    _y_pixels = 1
 
     def __init__(self, **kwargs):
         self._params = CanvasParams(**kwargs)
@@ -69,6 +69,11 @@ class Canvas(ABC):
     def params(self) -> CanvasParams:
         """Get the full parameters object"""
         return self._params
+
+    @property
+    def plot_style(self) -> str:
+        """Get the plot style line or scatter"""
+        return self._params.plot_style
 
     @property
     def width(self) -> int:

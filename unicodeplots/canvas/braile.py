@@ -5,14 +5,6 @@ from unicodeplots.utils import CanvasParams, Color, ColorType
 
 
 class BrailleCanvas(Canvas):
-    @property
-    def x_pixel_per_char(self) -> int:
-        return 2
-
-    @property
-    def y_pixel_per_char(self) -> int:
-        return 4
-
     _SUPERSAMPLE: int = 8
 
     def __init__(self, params: Optional[CanvasParams] = None, **kwargs):
@@ -24,10 +16,15 @@ class BrailleCanvas(Canvas):
             **kwargs: Additional parameters that override values in params if provided
         """
         super().__init__(params=params, **kwargs)
-        self.default_char = 0x2800
-        self.active_cells = [[self.default_char] * self.grid_cols for _ in range(self.grid_rows)]
+        if self.plot_style.lower() == "line":
+            self.default_char = 0x2800
+            self._x_pixels = 2
+            self._y_pixels = 4
+            self.grid_rows = self.grid_rows // self._y_pixels
+            self.grid_cols = self.grid_cols // self._x_pixels
 
         self.default_color = Color.WHITE
+        self.active_cells = [[self.default_char] * self.grid_cols for _ in range(self.grid_rows)]
         self.active_colors = [[self.default_color] * self.grid_cols for _ in range(self.grid_rows)]
 
         # Precompute bit values for faster pixel calculations

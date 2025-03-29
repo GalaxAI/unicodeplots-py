@@ -37,6 +37,7 @@ class CanvasParams:
     yflip: bool = False
     xscale: Callable[[float], float] = field(default_factory=lambda: lambda x: x)
     yscale: Callable[[float], float] = field(default_factory=lambda: lambda y: y)
+    plot_style: str = "line"
 
 
 @dataclass_filter_kwargs
