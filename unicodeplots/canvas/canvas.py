@@ -6,6 +6,9 @@ from unicodeplots.utils import CanvasParams, ColorType
 
 
 class Canvas(ABC):
+    _x_pixels = 2
+    _y_pixels = 4
+
     def __init__(self, **kwargs):
         self._params = CanvasParams(**kwargs)
 
@@ -31,14 +34,12 @@ class Canvas(ABC):
         return length
 
     @property
-    @abstractmethod
     def x_pixel_per_char(self) -> int:
-        pass
+        return self._x_pixels
 
     @property
-    @abstractmethod
     def y_pixel_per_char(self) -> int:
-        pass
+        return self._y_pixels
 
     @abstractmethod
     def _set_pixel(self, px: int, py: int, color: ColorType):
