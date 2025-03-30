@@ -16,7 +16,7 @@ Unicode plotting library designed for use in python.
 # Inference
 > Note: Frontend components subject to significant changes
 
-## Lineplot (Line Plot)
+## Lineplot (Lineplot)
 ```python
 print(Lineplot([-1, 2, 3, 7], [-1, 2, 9, 4], title="Example", name="my line", xlabel="x", ylabel="y", border='single').render())
 ```
@@ -29,9 +29,13 @@ print(Lineplot(x_vals, math.sin, x_vals, math.cos,
 ```
 ![cos sin](media/cosin.png)
 
+## Scatterplot (Lineplot)
+```python
+print(Lineplot(x, y, scatter=True, title="Random Scatter Plot", show_axes=True))
+```
+![rand scatter](media/rand_scatter.png)
 
 ### To come
-> scatterplot (Scatter Plot) \
 > stairs (Staircase Plot) \
 > barplot (Bar Plot - horizontal) \
 > histogram (Histogram - horizontal / vertical) \
