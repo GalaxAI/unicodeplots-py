@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field, fields
 from functools import wraps
-from typing import Any, Callable, Type, TypeVar, cast
+from typing import Any, Callable, List, Optional, Type, TypeVar, Union, cast
 
 T = TypeVar("T")
 
@@ -37,7 +37,8 @@ class CanvasParams:
     yflip: bool = False
     xscale: Callable[[float], float] = field(default_factory=lambda: lambda x: x)
     yscale: Callable[[float], float] = field(default_factory=lambda: lambda y: y)
-    plot_style: str = "line"
+    marker: Optional[Union[str, List[str]]] = None
+    # plot_style: str = "line",
 
 
 @dataclass_filter_kwargs

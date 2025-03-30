@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, Protocol, runtime_checkable
+from typing import List, Optional, Protocol, Union, runtime_checkable
 
 from unicodeplots.canvas.canvas import Canvas
 from unicodeplots.utils import CanvasParams, ColorType
@@ -8,10 +8,16 @@ from unicodeplots.utils import CanvasParams, ColorType
 @runtime_checkable
 class PlotStyle(Protocol):
     def adjust_grid(self, canvas: "BrailleCanvas"):
-        """Style-specifc bla bla"""
+        """Adjust the grid dimensions for the style."""
         ...
 
-    def set_pixel(self, canvas: "BrailleCanvas", px: int, py: int, color: ColorType) -> None:
+    def set_pixel(
+        self,
+        canvas: "BrailleCanvas",
+        px: int,
+        py: int,
+        color: ColorType,
+    ) -> None:
         """Style-specific logic for setting a pixel."""
         ...
 
@@ -29,7 +35,14 @@ class LineStyle:
         canvas._x_pixels = self.x_pixels
         canvas._y_pixels = self.y_pixels
 
-    def set_pixel(self, canvas: "Canvas", px: int, py: int, color: ColorType) -> None:
+    def set_pixel(
+        self,
+        canvas: "Canvas",
+        px: int,
+        py: int,
+        color: ColorType,
+        marker: Optional[Union[str, List[str]]] = None,
+    ) -> None:
         cx = px // canvas.x_pixel_per_char
         cy = py // canvas.y_pixel_per_char
 
@@ -44,11 +57,21 @@ class LineStyle:
 
 
 @dataclass
-# @WIP
 class MarkerStyle:
     x_pixels = 1
     y_pixels = 1
-    default_marker = "•"
+    default_marker = "●"
+    active_marker = default_marker
+
+    def __init__(self, markers: Optional[Union[str, List[str]]] = None):
+        if isinstance(markers, str):
+            self.default_marker = markers
+        elif isinstance(markers, list):
+            self.markers = markers
+
+    def set_marker(self, marker: str) -> "MarkerStyle":
+        self.active_marker = marker
+        return self
 
     def adjust_grid(self, canvas: "Canvas") -> None:
         canvas._x_pixels = self.x_pixels
@@ -60,8 +83,7 @@ class MarkerStyle:
 
         if not (0 <= cx < canvas.grid_cols and 0 <= cy < canvas.grid_rows):
             return
-
-        canvas.active_cells[cy][cx] = ord(self.default_marker)
+        canvas.active_cells[cy][cx] = ord(self.active_marker)
         canvas.active_colors[cy][cx] = color
 
 
@@ -77,20 +99,18 @@ class BrailleCanvas(Canvas):
             **kwargs: Additional parameters that override values in params if provided
         """
         super().__init__(params=params, **kwargs)
-        self.plot_style = self._init_plot_style(self.params.plot_style)
+        self.plot_style = self._init_plot_style(self.params.marker)
         self.plot_style.adjust_grid(self)
 
         self.active_cells = [[self.default_char] * self.grid_cols for _ in range(self.grid_rows)]
         self.active_colors = [[self.default_color] * self.grid_cols for _ in range(self.grid_rows)]
 
-    def _init_plot_style(self, plot_style: str) -> PlotStyle:
+    def _init_plot_style(self, marker: Optional[Union[str, List[str]]]) -> PlotStyle:
         """Factory method to create the appropriate PlotStyle."""
-        if plot_style.lower() == "line":
-            return LineStyle()
-        # elif plot_style.lower() == "marker":
-        #     return MarkerStyle()
+        if marker:
+            return MarkerStyle()
         else:
-            raise ValueError(f"Unknown plot style: {plot_style}")
+            return LineStyle()
 
     def _draw_bresenham_segment(self, px1: int, py1: int, px2: int, py2: int, color: ColorType):
         """Draws a single line segment using Bresenham given INTEGER pixel coordinates."""

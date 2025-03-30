@@ -1,6 +1,6 @@
 from typing import Callable, Iterable, List, Optional, Sequence, Tuple, Union
 
-from unicodeplots.canvas import BrailleCanvas, LineStyle
+from unicodeplots.canvas import BrailleCanvas, LineStyle, MarkerStyle
 from unicodeplots.components import BorderBox
 from unicodeplots.utils import Color, ColorType
 
@@ -43,16 +43,21 @@ class Lineplot:
         self.legend = legend
         self.border_style = border
         self.scatter = scatter
-
         # Determine whether to show border based on decorative elements
         self.show_border = bool(title or xlabel or ylabel or legend or border)
 
         # Parse data from args first
         self.canvas = BrailleCanvas(**kwargs)
+        if isinstance(self.canvas.plot_style, MarkerStyle):
+            self.marker: Optional[Union[str, List[str]]] = list(kwargs.get("marker", []))
+        else:
+            self.marker = []
+
         self.datasets = self._parse_arguments(*args)
         self.min_x, self.max_x, self.min_y, self.max_y = self._compute_data_bounds()
         self.show_axes = show_axes
         self.colors = colors or [color for color in Color if color != Color.INVALID]
+        # NOTE: I don't see a reason for anyone to turn off scaling.
         self.auto_scale = kwargs.get("auto_scale", True)
         self.plot()
 
@@ -204,18 +209,22 @@ class Lineplot:
 
         # Draw each dataset with its own color
         for idx, (x_data, y_data) in enumerate(self.datasets):
-            color = self.colors[idx % len(self.colors)]
-            self._draw_dataset(x_data, y_data, color)
+            self._draw_dataset(x_data, y_data, idx)
 
         return self
 
-    def _draw_dataset(
-        self,
-        x_data: List[Union[float, int]],
-        y_data: List[Union[float, int]],
-        color: ColorType,
-    ) -> None:
+    def _draw_dataset(self, x_data: List[Union[float, int]], y_data: List[Union[float, int]], idx: int) -> None:
         """Draw a dataset using the canvas's line() or set_point()."""
+        # Setup
+        if isinstance(self.colors, list):
+            color = self.colors[idx % len(self.colors)]
+        else:
+            color = self.colors  # type: ignore[assignment]
+        if self.marker:
+            marker = self.marker[idx % len(self.marker)]
+        else:
+            marker = "●"  # Make mypy happy.
+
         if isinstance(self.canvas.plot_style, LineStyle):
             if self.scatter:
                 for x, y in zip(x_data, y_data):
@@ -223,6 +232,15 @@ class Lineplot:
             else:
                 for i in range(1, len(x_data)):
                     self.canvas.line(x_data[i - 1], y_data[i - 1], x_data[i], y_data[i], color=color)
+        elif isinstance(self.canvas.plot_style, MarkerStyle):
+            self.canvas.plot_style.set_marker(marker)
+            if self.scatter:
+                for x, y in zip(x_data, y_data):
+                    self.canvas.set_point(x, y, color)
+            else:
+                for i in range(1, len(x_data)):
+                    self.canvas.line(x_data[i - 1], y_data[i - 1], x_data[i], y_data[i], color=color)
+
         else:
             raise TypeError(f"Unsupported plot style: {type(self.canvas.plot_style)}")
 
