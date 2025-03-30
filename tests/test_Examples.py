@@ -31,6 +31,18 @@ def test_lineplot_example_03(snapshot):
     x = [uniform(-5, 5) for _ in range(100)]
     y = [uniform(-5, 5) for _ in range(100)]
 
-    plot = Lineplot(x, y, scatter=True, title="Random Scatter Plot", show_axes=True)
+    plot = Lineplot(x, y, scatter=True, border="single", title="Random Scatter Plot", show_axes=True)
     output = plot.render()
     snapshot.assert_match(output, "Lineplot_Example_03.txt")
+
+
+def test_lineplot_example_04(snapshot):
+    seed(42)
+    x = [uniform(-5, 5) for _ in range(100)]
+    y = [uniform(-5, 5) for _ in range(100)]
+    x1 = [uniform(-5, 5) for _ in range(100)]
+    y1 = [uniform(-5, 5) for _ in range(100)]
+
+    plot = Lineplot(x, y, x1, y1, width=40, height=20, scatter=True, border="single", marker=["*", "x"], title="Scatter Plot w Marker", show_axes=True)
+    output = plot.render()
+    snapshot.assert_match(output, "Lineplot_Example_04.txt")

@@ -18,22 +18,27 @@ Unicode plotting library designed for use in python.
 
 ## Lineplot (Lineplot)
 ```python
-print(Lineplot([-1, 2, 3, 7], [-1, 2, 9, 4], title="Example", name="my line", xlabel="x", ylabel="y", border='single').render())
+Lineplot([-1, 2, 3, 7], [-1, 2, 9, 4], title="Example", name="my line", xlabel="x", ylabel="y", border='single').render()
 ```
 ![line](media/line.png)
 ```python
-print(Lineplot(x_vals, math.sin, x_vals, math.cos,
+Lineplot(x_vals, math.sin, x_vals, math.cos,
     width = 80, height = 60,
     show_axes=True, border='single', xlabel='x',ylabel='f(x)').render()
-)
 ```
 ![cos sin](media/cosin.png)
 
 ## Scatterplot (Lineplot)
 ```python
-plot = Lineplot(x, y, scatter=True, border = 'single', title="Rand Scatter Plot", show_axes=True)
+Lineplot(x, y, scatter=True, border = 'single', title="Rand Scatter Plot", show_axes=True).render()
 ```
 ![rand scatter](media/rand_scatter.png)
+
+## Marker (Lineplot)
+```python
+Lineplot(x, y, x1, y1, width = 40, height=20, scatter=True, border="single", marker = ['*', 'x'], title="Scatter Plot w Marker", show_axes=True).render()
+```
+![marker scatter](media/marker_scatter.png)
 
 ### To come
 > stairs (Staircase Plot) \

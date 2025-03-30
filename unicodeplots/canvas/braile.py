@@ -60,7 +60,7 @@ class LineStyle:
 class MarkerStyle:
     x_pixels = 1
     y_pixels = 1
-    default_marker = "●"
+    default_marker = "•"
     active_marker = default_marker
 
     def __init__(self, markers: Optional[Union[str, List[str]]] = None):
