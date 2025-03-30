@@ -2,12 +2,14 @@ import math
 from abc import ABC, abstractmethod
 from typing import Any, Callable, List
 
-from unicodeplots.utils import CanvasParams, ColorType
+from unicodeplots.utils import CanvasParams, Color, ColorType
 
 
 class Canvas(ABC):
     _x_pixels = 1
     _y_pixels = 1
+    default_char = 0x2800
+    default_color = Color.WHITE
 
     def __init__(self, **kwargs):
         self._params = CanvasParams(**kwargs)
@@ -41,7 +43,7 @@ class Canvas(ABC):
     def y_pixel_per_char(self) -> int:
         return self._y_pixels
 
-    @abstractmethod
+    # NOTE This might be deprecated.
     def _set_pixel(self, px: int, py: int, color: ColorType):
         """Set a pixel in the Braille grid representation."""
 
@@ -69,11 +71,6 @@ class Canvas(ABC):
     def params(self) -> CanvasParams:
         """Get the full parameters object"""
         return self._params
-
-    @property
-    def plot_style(self) -> str:
-        """Get the plot style line or scatter"""
-        return self._params.plot_style
 
     @property
     def width(self) -> int:

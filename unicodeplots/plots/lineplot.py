@@ -1,6 +1,6 @@
 from typing import Callable, Iterable, List, Optional, Sequence, Tuple, Union
 
-from unicodeplots.canvas import BrailleCanvas
+from unicodeplots.canvas import BrailleCanvas, LineStyle
 from unicodeplots.components import BorderBox
 from unicodeplots.utils import Color, ColorType
 
@@ -211,6 +211,20 @@ class Lineplot:
                 # Draw the line segment - canvas will handle the scaling
                 self.canvas.line(x_data[i - 1], y_data[i - 1], x_data[i], y_data[i], color=color)
         return self
+
+    def _draw_dataset(
+        self,
+        x_data: List[Union[float, int]],
+        y_data: List[Union[float, int]],
+        color: ColorType,
+    ) -> None:
+        """Draw a dataset using the canvas's line() or set_point()."""
+        if isinstance(self.canvas.plot_style, LineStyle):
+            for i in range(1, len(x_data)):
+                self.canvas.line(x_data[i - 1], y_data[i - 1], x_data[i], y_data[i], color=color)
+        # else:
+        #     for x, y in zip(x_data, y_data):
+        #         self.canvas.set_point(x, y, color)
 
     def render(self) -> str:
         """

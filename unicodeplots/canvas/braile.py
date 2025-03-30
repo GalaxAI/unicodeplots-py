@@ -1,7 +1,48 @@
-from typing import Optional
+from dataclasses import dataclass
+from typing import Optional, Protocol, runtime_checkable
 
 from unicodeplots.canvas.canvas import Canvas
-from unicodeplots.utils import CanvasParams, Color, ColorType
+from unicodeplots.utils import CanvasParams, ColorType
+
+
+@runtime_checkable
+class PlotStyle(Protocol):
+    def adjust_grid(self, canvas: "BrailleCanvas"):
+        """Style-specifc bla bla"""
+        ...
+
+    def set_pixel(self, canvas: "BrailleCanvas", px: int, py: int, color: ColorType) -> None:
+        """Style-specific logic for setting a pixel."""
+        ...
+
+
+@dataclass
+class LineStyle:
+    x_pixels: int = 2
+    y_pixels: int = 4
+    bit_table = [
+        [0x01, 0x02, 0x04, 0x40],  # x=0
+        [0x08, 0x10, 0x20, 0x80],  # x=1
+    ]
+
+    def adjust_grid(self, canvas: "Canvas") -> None:
+        canvas._x_pixels = self.x_pixels
+        canvas._y_pixels = self.y_pixels
+        canvas.grid_rows = canvas.grid_rows // self.y_pixels
+        canvas.grid_cols = canvas.grid_cols // self.x_pixels
+
+    def set_pixel(self, canvas: "Canvas", px: int, py: int, color: ColorType) -> None:
+        cx = px // canvas.x_pixel_per_char
+        cy = py // canvas.y_pixel_per_char
+
+        if not (0 <= cx < canvas.grid_cols and 0 <= cy < canvas.grid_rows):
+            return
+
+        x_in = px % canvas.x_pixel_per_char
+        y_in = py % canvas.y_pixel_per_char
+        bit = self.bit_table[x_in][y_in]
+        canvas.active_cells[cy][cx] |= bit
+        canvas.active_colors[cy][cx] = color
 
 
 class BrailleCanvas(Canvas):
@@ -16,43 +57,20 @@ class BrailleCanvas(Canvas):
             **kwargs: Additional parameters that override values in params if provided
         """
         super().__init__(params=params, **kwargs)
-        if self.plot_style.lower() == "line":
-            self.default_char = 0x2800
-            self._x_pixels = 2
-            self._y_pixels = 4
-            self.grid_rows = self.grid_rows // self._y_pixels
-            self.grid_cols = self.grid_cols // self._x_pixels
+        self.plot_style = self._init_plot_style(self.params.plot_style)
+        self.plot_style.adjust_grid(self)
 
-        self.default_color = Color.WHITE
         self.active_cells = [[self.default_char] * self.grid_cols for _ in range(self.grid_rows)]
         self.active_colors = [[self.default_color] * self.grid_cols for _ in range(self.grid_rows)]
 
-        # Precompute bit values for faster pixel calculations
-        self.bit_table = [
-            [0x01, 0x02, 0x04, 0x40],  # x=0
-            [0x08, 0x10, 0x20, 0x80],  # x=1
-        ]
-
-    def _set_pixel(self, px: int, py: int, color: ColorType) -> None:
-        """Set a pixel in the Braille grid representation."""
-        cx = px // self.x_pixel_per_char
-        cy = py // self.y_pixel_per_char
-
-        if not (0 <= cx < self.grid_cols and 0 <= cy < self.grid_rows):
-            return
-
-        try:
-            x_in = px % self.x_pixel_per_char
-            y_in = py % self.y_pixel_per_char
-            bit = self.bit_table[x_in][y_in]
-        except IndexError:
-            return
-
-        # Update cell bits
-        self.active_cells[cy][cx] |= bit
-
-        # Update color (simple overwrite)
-        self.active_colors[cy][cx] = color
+    def _init_plot_style(self, plot_style: str) -> PlotStyle:
+        """Factory method to create the appropriate PlotStyle."""
+        if plot_style.lower() == "line":
+            return LineStyle()
+        # elif plot_style.lower() == "scatter":
+        # return ScatterStyle()
+        else:
+            raise ValueError(f"Unknown plot style: {plot_style}")
 
     def _draw_bresenham_segment(self, px1: int, py1: int, px2: int, py2: int, color: ColorType):
         """Draws a single line segment using Bresenham given INTEGER pixel coordinates."""
@@ -82,7 +100,7 @@ class BrailleCanvas(Canvas):
 
         # Set the actual pixels on the canvas
         for p_x, p_y in pixels:
-            self._set_pixel(p_x, p_y, color)
+            self.plot_style.set_pixel(self, p_x, p_y, color)
 
     def line(self, x1: float, y1: float, x2: float, y2: float, color: ColorType):
         """Draw a line between logical coordinates using self._SUPERSAMPLEd Bresenham for smoother curves"""
