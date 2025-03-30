@@ -22,9 +22,6 @@ class Canvas(ABC):
         self.pixel_width = self._align_to_char_length(self.pixel_width)
         self.pixel_height = self._align_to_char_length(self.pixel_height)
 
-        self.grid_rows = self.pixel_height // self.y_pixel_per_char
-        self.grid_cols = self.pixel_width // self.x_pixel_per_char
-
         self.active_cells: List[List[Any]] = [[] for _ in range(self.grid_rows)]
         self.active_colors: List[List[ColorType]] = [[] for _ in range(self.grid_rows)]
 
@@ -43,9 +40,13 @@ class Canvas(ABC):
     def y_pixel_per_char(self) -> int:
         return self._y_pixels
 
-    # NOTE This might be deprecated.
-    def _set_pixel(self, px: int, py: int, color: ColorType):
-        """Set a pixel in the Braille grid representation."""
+    @property
+    def grid_cols(self) -> int:
+        return self.pixel_width // self.x_pixel_per_char
+
+    @property
+    def grid_rows(self) -> int:
+        return self.pixel_height // self.y_pixel_per_char
 
     @abstractmethod
     def line(self, x1: float, y1: float, x2: float, y2: float, color: ColorType):

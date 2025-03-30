@@ -28,8 +28,6 @@ class LineStyle:
     def adjust_grid(self, canvas: "Canvas") -> None:
         canvas._x_pixels = self.x_pixels
         canvas._y_pixels = self.y_pixels
-        canvas.grid_rows = canvas.grid_rows // self.y_pixels
-        canvas.grid_cols = canvas.grid_cols // self.x_pixels
 
     def set_pixel(self, canvas: "Canvas", px: int, py: int, color: ColorType) -> None:
         cx = px // canvas.x_pixel_per_char
@@ -55,8 +53,6 @@ class MarkerStyle:
     def adjust_grid(self, canvas: "Canvas") -> None:
         canvas._x_pixels = self.x_pixels
         canvas._y_pixels = self.y_pixels
-        canvas.grid_rows = canvas.grid_rows // self.y_pixels
-        canvas.grid_cols = canvas.grid_cols // self.x_pixels
 
     def set_pixel(self, canvas: "Canvas", px: int, py: int, color: ColorType) -> None:
         cx = px // canvas.x_pixel_per_char
