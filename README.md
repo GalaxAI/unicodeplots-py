@@ -31,7 +31,7 @@ print(Lineplot(x_vals, math.sin, x_vals, math.cos,
 
 ## Scatterplot (Lineplot)
 ```python
-print(Lineplot(x, y, scatter=True, title="Random Scatter Plot", show_axes=True))
+plot = Lineplot(x, y, scatter=True, border = 'single', title="Rand Scatter Plot", show_axes=True)
 ```
 ![rand scatter](media/rand_scatter.png)
 
