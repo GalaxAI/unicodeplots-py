@@ -14,6 +14,7 @@ class Lineplot:
         self,
         *args,
         colors: Optional[Union[ColorType, List[ColorType]]] = None,
+        scatter=False,
         show_axes: bool = False,
         title: Optional[str] = None,
         xlabel: Optional[str] = None,
@@ -41,6 +42,7 @@ class Lineplot:
         self.ylabel = ylabel
         self.legend = legend
         self.border_style = border
+        self.scatter = scatter
 
         # Determine whether to show border based on decorative elements
         self.show_border = bool(title or xlabel or ylabel or legend or border)
@@ -187,11 +189,8 @@ class Lineplot:
 
         # Update canvas parameters if auto_scale is enabled
         if self.auto_scale:
-            # Set the origin point to match the data bounds
             self.canvas.params.origin_x = self.min_x
             self.canvas.params.origin_y = self.min_y
-
-            # Update width and height to match data range
             self.canvas.params.width = self.max_x - self.min_x
             self.canvas.params.height = self.max_y - self.min_y
 
@@ -206,10 +205,8 @@ class Lineplot:
         # Draw each dataset with its own color
         for idx, (x_data, y_data) in enumerate(self.datasets):
             color = self.colors[idx % len(self.colors)]
+            self._draw_dataset(x_data, y_data, color)
 
-            for i in range(1, len(x_data)):
-                # Draw the line segment - canvas will handle the scaling
-                self.canvas.line(x_data[i - 1], y_data[i - 1], x_data[i], y_data[i], color=color)
         return self
 
     def _draw_dataset(
@@ -220,11 +217,14 @@ class Lineplot:
     ) -> None:
         """Draw a dataset using the canvas's line() or set_point()."""
         if isinstance(self.canvas.plot_style, LineStyle):
-            for i in range(1, len(x_data)):
-                self.canvas.line(x_data[i - 1], y_data[i - 1], x_data[i], y_data[i], color=color)
-        # else:
-        #     for x, y in zip(x_data, y_data):
-        #         self.canvas.set_point(x, y, color)
+            if self.scatter:
+                for x, y in zip(x_data, y_data):
+                    self.canvas.set_point(x, y, color)
+            else:
+                for i in range(1, len(x_data)):
+                    self.canvas.line(x_data[i - 1], y_data[i - 1], x_data[i], y_data[i], color=color)
+        else:
+            raise TypeError(f"Unsupported plot style: {type(self.canvas.plot_style)}")
 
     def render(self) -> str:
         """

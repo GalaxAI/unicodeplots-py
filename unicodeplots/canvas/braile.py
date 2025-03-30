@@ -45,6 +45,30 @@ class LineStyle:
         canvas.active_colors[cy][cx] = color
 
 
+@dataclass
+# @WIP
+class MarkerStyle:
+    x_pixels = 1
+    y_pixels = 1
+    default_marker = "•"
+
+    def adjust_grid(self, canvas: "Canvas") -> None:
+        canvas._x_pixels = self.x_pixels
+        canvas._y_pixels = self.y_pixels
+        canvas.grid_rows = canvas.grid_rows // self.y_pixels
+        canvas.grid_cols = canvas.grid_cols // self.x_pixels
+
+    def set_pixel(self, canvas: "Canvas", px: int, py: int, color: ColorType) -> None:
+        cx = px // canvas.x_pixel_per_char
+        cy = py // canvas.y_pixel_per_char
+
+        if not (0 <= cx < canvas.grid_cols and 0 <= cy < canvas.grid_rows):
+            return
+
+        canvas.active_cells[cy][cx] = ord(self.default_marker)
+        canvas.active_colors[cy][cx] = color
+
+
 class BrailleCanvas(Canvas):
     _SUPERSAMPLE: int = 8
 
@@ -67,8 +91,8 @@ class BrailleCanvas(Canvas):
         """Factory method to create the appropriate PlotStyle."""
         if plot_style.lower() == "line":
             return LineStyle()
-        # elif plot_style.lower() == "scatter":
-        # return ScatterStyle()
+        # elif plot_style.lower() == "marker":
+        #     return MarkerStyle()
         else:
             raise ValueError(f"Unknown plot style: {plot_style}")
 
@@ -101,6 +125,12 @@ class BrailleCanvas(Canvas):
         # Set the actual pixels on the canvas
         for p_x, p_y in pixels:
             self.plot_style.set_pixel(self, p_x, p_y, color)
+
+    def set_point(self, x: float, y: float, color: ColorType):
+        """Set a point using PlotStyle."""
+        px = self.x_to_pixel(x)
+        py = self.y_to_pixel(y)
+        self.plot_style.set_pixel(self, int(px), int(py), color)
 
     def line(self, x1: float, y1: float, x2: float, y2: float, color: ColorType):
         """Draw a line between logical coordinates using self._SUPERSAMPLEd Bresenham for smoother curves"""
