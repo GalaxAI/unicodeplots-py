@@ -18,4 +18,10 @@ dev = [
 ]
 
 [tool.setuptools]
-packages = ["unicodeplots"]
+packages = [
+    "unicodeplots",
+    "unicodeplots.canvas",
+    "unicodeplots.plots",
+    "unicodeplots.components",
+    "unicodeplots.utils",
+]
