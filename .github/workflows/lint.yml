@@ -1,0 +1,24 @@
+name: Lint
+
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+
+    - name: Install linters
+      run: |
+        python -m pip -e .[lint]
+
+    - name: Check formatting with ruff
+      run: ruff check
+
+    - name: Lint with ruff
+      run: ruff format
+
+    # NOTE: I might turn it on in future when project is more mature.
+    # - name: Check mypy types.
+    #   run: mypy --strict-equality
