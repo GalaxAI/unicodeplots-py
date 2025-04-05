@@ -6,6 +6,10 @@ readme = "README.md"
 requires-python = ">=3.11"
 
 [project.optional-dependencies]
+img = [
+    "pillow>=11.1.0",
+]
+
 dev = [
     "mypy>=1.15.0",
     "pre-commit>=4.1.0",
