@@ -32,7 +32,7 @@ jobs:
         pytest tests/ -v
 
     - name: Upload snapshot comparison on failure
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: failure()
       with:
         name: snapshot-diffs-${{ matrix.os }}-${{ matrix.python-version }}
