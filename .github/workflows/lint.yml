@@ -8,10 +8,12 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
 
     - name: Install linters
       run: |
-        python -m pip -e .[lint]
+        python -m pip install -e .[lint]
 
     - name: Check formatting with ruff
       run: ruff check
