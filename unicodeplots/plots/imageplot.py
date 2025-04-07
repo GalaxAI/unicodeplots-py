@@ -56,42 +56,52 @@ class Imageplot:
         Parse arguments provided during initialization.
 
         Args:
-            *args: Arguments passed to __init__.
+            *args: Arguments passed to __init__. Each argument can be:
+                - A string or Path object representing a path to an image file
+                - A PIL.Image.Image object
+                - An iterable containing any of the above types
 
         Returns:
             A list of PIL.Image.Image objects.
 
         Raises:
             FileNotFoundError: If a path provided does not exist.
-            ValueError: If an argument is not a str, Path, or PIL.Image.
+            ValueError: If an argument is not a str, Path, PIL.Image, or an iterable of these.
             PIL.UnidentifiedImageError: If a file cannot be opened as an image.
         """
         dataset: List[PILImage] = []
-        for value in args:
-            img = None
+
+        def process_value(value):
             if isinstance(value, PILImage):
-                img = value
+                return value
             elif isinstance(value, (str, Path)):
                 try:
                     path = Path(value).resolve()
                     if not path.is_file():
                         raise FileNotFoundError(f"Image file not found: {value}")
-                    img = Image.open(path)
+                    return Image.open(path)
                 except FileNotFoundError as e:
                     print(f"Error: {e}", file=sys.stderr)
-                    continue  # Skip this value
                 except Image.UnidentifiedImageError:
                     print(f"Error: Cannot identify image file format: {value}", file=sys.stderr)
-                    continue  # Skip this value
                 except Exception as e:  # Catch other potential PIL errors
                     print(f"Error opening image {value}: {e}", file=sys.stderr)
-                    continue  # Skip this value
+            elif hasattr(value, "__iter__") and not isinstance(value, (str, bytes)):
+                # Process iterables recursively, but skip strings as they're already handled
+                for item in value:
+                    img = process_value(item)
+                    if img:
+                        dataset.append(img)
             else:
-                print(f"Warning: Value needs to be a str, Path or PIL.Image. Ignoring value: {value!r}", file=sys.stderr)
-                continue
+                print(f"Warning: Value needs to be a str, Path, PIL.Image or an iterable of these. Ignoring value: {value!r}", file=sys.stderr)
 
+            return None
+
+        for value in args:
+            img = process_value(value)
             if img:
                 dataset.append(img)
+
         return dataset
 
     def _img_to_kitty_str(self, image: PILImage) -> Tuple[int, int, str]:
@@ -181,28 +191,56 @@ class Imageplot:
             term_width = 120  # Fallback width
 
         if self.is_kitty:
+            # NOTE: we are assuming 10pt font and but to keep it safe we are keeping a safe place
             x_offset: int = 0
-            # y_offset: int = 0
-            for i, (height, width, img_data) in enumerate(self.images):
-                img_data = img_data.replace("X=0", f"X={x_offset}")
-                if i == len(self.images) - 1:
-                    img_data = img_data.replace("C=1", "C=0")
-                sys.stdout.write(img_data)
-                x_offset += width
+            font_size = 10 / 1.5
+            max_width = term_width * font_size
 
-            print(x_offset)
+            # Pre-processing
+            images = []
+            row = []
+            for i, (height, width, img_data) in enumerate(self.images):
+                if x_offset + width >= max_width:
+                    # last value
+                    img_data = img_data.replace("C=1", "C=0") + "\n"
+                    row.append([height, width, img_data])
+                    images.append(row)
+                    row = []
+                    x_offset = 0
+                else:
+                    row.append([height, width, img_data])
+                    x_offset += width
+
+            # Ensure the last element in the final row also has C=0
+            if row:
+                last_height, last_width, last_img_data = row[-1]
+                row[-1] = [last_height, last_width, last_img_data.replace("C=1", "C=0") + "\n"]
+                images.append(row)
+
+            for row in images:
+                x_offset = 0
+                for height, width, img_data in row:
+                    img_data = img_data.replace("X=0", f"X={x_offset}")
+                    sys.stdout.write(img_data)
+                    x_offset += width
+                x_offset = 0
+                sys.stdout.flush()
+            print("\n\n")
+
         else:
             # Logic for unicode printing
             img_width = self.images[0][0].count("\x1b") // 2  # Adjustment to use whole terminal.
             max_images_per_row = max(1, term_width // (img_width + 5))
             for i in range(0, len(self.images), max_images_per_row):
+                print()
                 group = self.images[i : i + max_images_per_row]
                 min_rows = min(len(img_str) for img_str in group)
                 truncated_images = [img_str[:min_rows] for img_str in group]
 
                 for row_parts in zip(*truncated_images):
-                    print("|".join(row_parts))
+                    print(" | ".join(row_parts))
 
 
 if __name__ == "__main__":
-    Imageplot("media/monarch.png", "galax.png", "galax.png", "galax.png", "galax.png", "galax.png", 123, "non_existent_file.jpg").render()
+    images = ["media/monarch.png"] * 10
+    Imageplot(images).render()
