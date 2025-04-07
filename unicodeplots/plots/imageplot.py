@@ -239,8 +239,3 @@ class Imageplot:
 
                 for row_parts in zip(*truncated_images):
                     print(" | ".join(row_parts))
-
-
-if __name__ == "__main__":
-    images = ["media/monarch.png"] * 10
-    Imageplot(images).render()
