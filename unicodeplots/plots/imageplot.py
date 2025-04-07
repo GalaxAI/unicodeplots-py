@@ -94,7 +94,7 @@ class Imageplot:
                 dataset.append(img)
         return dataset
 
-    def _display_kitty(self, image: PILImage) -> Tuple[int, int, str]:
+    def _img_to_kitty_str(self, image: PILImage) -> Tuple[int, int, str]:
         """
         Displays a single PIL Image using the Kitty terminal graphics protocol.
 
@@ -105,21 +105,18 @@ class Imageplot:
         # Convert image to PNG bytes in memory
         with io.BytesIO() as buf:
             save_format = "PNG"
-            if image.mode == "RGBA" or "A" in image.mode:
-                image.save(buf, format=save_format)
-            else:
-                image.save(buf, format=save_format)
-
+            image.save(buf, format=save_format)
             img_bytes = buf.getvalue()
 
         b64_img = base64.standard_b64encode(img_bytes)
-
+        decoded = b64_img.decode("ascii")
         width, height = image.size
 
-        kitty_sequence = f"\033_Gf=100,a=T,t=d,X=0,Y=0,C=1,s={width},v={height};{b64_img.decode('ascii')}\033\\  "
+        # NOTE: https://sw.kovidgoyal.net/kitty/graphics-protocol/#control-data-reference
+        kitty_sequence = f"\033_Gf=100,a=T,t=d,X=0,Y=0,C=1,s={width},v={height};{decoded}\033\\  "
         return height, width, kitty_sequence
 
-    def _image_to_unicode_str(self, image: PILImage) -> List[str]:
+    def _img_to_unicode_str(self, image: PILImage) -> List[str]:
         """
         Converts an image to a list of strings (one per row) using Unicode blocks.
 
@@ -132,10 +129,9 @@ class Imageplot:
         try:
             original_width, original_height = image.size
             aspect_ratio = original_height / original_width
-            new_height = self.img_h
-            new_width = int(new_height / aspect_ratio * 2)  # Compensate for block aspect ratio
+            new_width = int(self.img_h / aspect_ratio * 2)  # Compensate for block aspect ratio
 
-            resized = image.resize((new_width, new_height))
+            resized = image.resize((new_width, self.img_h))
             if resized.mode != "RGB":
                 resized = resized.convert("RGB")
 
@@ -169,9 +165,9 @@ class Imageplot:
             return
 
         if self.is_kitty:
-            self.images = [self._display_kitty(img) for img in self.dataset]
+            self.images = [self._img_to_kitty_str(img) for img in self.dataset]
         else:
-            self.images = [self._image_to_unicode_str(img) for img in self.dataset]
+            self.images = [self._img_to_unicode_str(img) for img in self.dataset]
 
     def render(self):
         """
@@ -184,18 +180,7 @@ class Imageplot:
         except (AttributeError, OSError):
             term_width = 120  # Fallback width
 
-        if not self.is_kitty:
-            # Logic for unicode printing
-            img_width = self.images[0][0].count("\x1b") // 2  # Adjustment to use whole terminal.
-            max_images_per_row = max(1, term_width // (img_width + 5))
-            for i in range(0, len(self.images), max_images_per_row):
-                group = self.images[i : i + max_images_per_row]
-                min_rows = min(len(img_str) for img_str in group)
-                truncated_images = [img_str[:min_rows] for img_str in group]
-
-                for row_parts in zip(*truncated_images):
-                    print("|".join(row_parts))
-        else:
+        if self.is_kitty:
             x_offset: int = 0
             # y_offset: int = 0
             for i, (height, width, img_data) in enumerate(self.images):
@@ -206,7 +191,18 @@ class Imageplot:
                 x_offset += width
 
             print(x_offset)
+        else:
+            # Logic for unicode printing
+            img_width = self.images[0][0].count("\x1b") // 2  # Adjustment to use whole terminal.
+            max_images_per_row = max(1, term_width // (img_width + 5))
+            for i in range(0, len(self.images), max_images_per_row):
+                group = self.images[i : i + max_images_per_row]
+                min_rows = min(len(img_str) for img_str in group)
+                truncated_images = [img_str[:min_rows] for img_str in group]
+
+                for row_parts in zip(*truncated_images):
+                    print("|".join(row_parts))
 
 
 if __name__ == "__main__":
-    Imageplot("media/monarch.png", "galax.png").render()  # ,"galax.png","galax.png","galax.png","galax.png", 123, "non_existent_file.jpg").render()
+    Imageplot("media/monarch.png", "galax.png", "galax.png", "galax.png", "galax.png", "galax.png", 123, "non_existent_file.jpg").render()
