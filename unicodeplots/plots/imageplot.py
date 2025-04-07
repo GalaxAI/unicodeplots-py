@@ -8,6 +8,8 @@ from typing import List, Optional, Tuple
 from PIL import Image
 from PIL.Image import Image as PILImage
 
+SUPPORTED_TERM = ["xterm-kitty", "xterm-ghostty"]
+
 
 class Imageplot:
     """
@@ -168,8 +170,7 @@ class Imageplot:
         """
         term = os.environ.get("TERM", "")
         ascii_mode = os.environ.get("ASCII", "0") == "1"
-        supported_terminal = ["xterm-kitty", "xterm-ghostty"]
-        self.is_kitty = term in supported_terminal and not ascii_mode
+        self.is_kitty = term in SUPPORTED_TERM and not ascii_mode
 
         if not self.dataset:
             return
