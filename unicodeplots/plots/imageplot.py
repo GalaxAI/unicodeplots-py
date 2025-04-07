@@ -18,6 +18,7 @@ class Imageplot:
     def __init__(
         self,
         *args,  # *Images (Paths, strs, or PIL.Image objects)
+        img_h: int = 24,
         title: Optional[str] = None,
         xlabel: Optional[str] = None,
         ylabel: Optional[str] = None,
@@ -38,6 +39,7 @@ class Imageplot:
             legend: Whether to display a legend (currently unused for direct display).
             **kwargs: Additional keyword arguments (reserved for future use, e.g., canvas options).
         """
+        self.img_h = img_h
         self.title = title
         self.xlabel = xlabel
         self.ylabel = ylabel
@@ -138,22 +140,22 @@ class Imageplot:
             # image.close() # Be careful if self.dataset is shared/reused
             pass
 
-    def _display_unicode_blocks(self, image: PILImage, width: int = 48):
+    def _display_unicode_blocks(self, image: PILImage):
         """
         Displays an image using colored Unicode block characters as a fallback.
 
         Args:
             image: PIL Image to display
-            width: Target width in characters (default: 48)
         """
         try:
-            # Calculate new height maintaining aspect ratio
+            # Calculate new dimensions maintaining aspect ratio
             original_width, original_height = image.size
             aspect_ratio = original_height / original_width
-            height = int(width * aspect_ratio * 0.5)  # 0.5 because Unicode blocks are taller than wide
-            # Resize image
-            resized = image.resize((width, height))
-            # print(width, original_width, resized.size)
+
+            new_height = self.img_h
+            new_width = int(new_height / aspect_ratio * 2)  # Compensate for block aspect ratio
+
+            resized = image.resize((new_width, new_height))
 
             # Convert to RGB if needed
             if resized.mode != "RGB":
@@ -161,6 +163,8 @@ class Imageplot:
 
             # Get pixel data
             pixels = resized.load()
+            width, height = resized.size  # Note: PIL.Image.size returns (width, height)
+            print(aspect_ratio, width, height)
 
             # Print using Unicode block characters with ANSI colors
             for y in range(height):
