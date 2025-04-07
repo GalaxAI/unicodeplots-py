@@ -3,7 +3,7 @@ import io
 import os
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from PIL import Image
 from PIL.Image import Image as PILImage
@@ -44,10 +44,10 @@ class Imageplot:
         self.xlabel = xlabel
         self.ylabel = ylabel
         self.legend = legend
-        self.border_style = border  # Renamed to avoid conflict with border argument if used elsewhere
+        self.border_style = border
 
         self.dataset = self._parse_arguments(*args)
-        # self.canvas = None  # No canvas implementation yet
+        self.images: List[str] = []
 
         self.plot()
 
@@ -94,88 +94,66 @@ class Imageplot:
                 dataset.append(img)
         return dataset
 
-    def _display_kitty(self, image: PILImage):
+    def _display_kitty(self, image: PILImage) -> Tuple[int, int, str]:
         """
         Displays a single PIL Image using the Kitty terminal graphics protocol.
 
         Args:
             image: The PIL.Image.Image object to display.
         """
-        try:
-            # Convert image to PNG bytes in memory
-            with io.BytesIO() as buf:
-                save_format = "PNG"
-                if image.mode == "RGBA" or "A" in image.mode:
-                    image.save(buf, format=save_format)
-                else:
-                    image.save(buf, format=save_format)
 
-                img_bytes = buf.getvalue()
+        # Convert image to PNG bytes in memory
+        with io.BytesIO() as buf:
+            save_format = "PNG"
+            if image.mode == "RGBA" or "A" in image.mode:
+                image.save(buf, format=save_format)
+            else:
+                image.save(buf, format=save_format)
 
-            b64_img = base64.standard_b64encode(img_bytes)
+            img_bytes = buf.getvalue()
 
-            width, height = image.size
+        b64_img = base64.standard_b64encode(img_bytes)
 
-            # Construct the Kitty protocol escape sequence
-            # f=100: PNG format
-            # a=T: Action = Transmit and display
-            # t=d: Transmission = Direct (data follows)
-            # s,v: Original image width and height in pixels
-            # m=0: Indicates this is the last (or only) chunk of data
-            kitty_sequence = f"\033_Gf=100,a=T,t=d,s={width},v={height},m=0;{b64_img.decode('ascii')}\033\\"
+        width, height = image.size
 
-            sys.stdout.write(kitty_sequence)
-            sys.stdout.flush()
-            # Add a newline after the image for better separation in the terminal
-            print()
+        kitty_sequence = f"\033_Gf=100,a=T,t=d,X=0,Y=0,C=1,s={width},v={height};{b64_img.decode('ascii')}\033\\  "
+        return height, width, kitty_sequence
 
-        except Exception as e:
-            print(f"Error displaying image with Kitty protocol: {e}", file=sys.stderr)
-        finally:
-            image.close()
-            # Close the image object if it was opened from a file
-            # Note: PIL might lazy-load, but explicit close is good practice
-            # if we are sure we're done with it. Here, we might want to keep
-            # it open if render() also needs it. Let's comment out close for now.
-            # image.close() # Be careful if self.dataset is shared/reused
-            pass
-
-    def _display_unicode_blocks(self, image: PILImage):
+    def _image_to_unicode_str(self, image: PILImage) -> List[str]:
         """
-        Displays an image using colored Unicode block characters as a fallback.
+        Converts an image to a list of strings (one per row) using Unicode blocks.
 
         Args:
-            image: PIL Image to display
+            image: PIL Image to convert.
+
+        Returns:
+            List of strings, where each string represents a row of the image.
         """
         try:
-            # Calculate new dimensions maintaining aspect ratio
             original_width, original_height = image.size
             aspect_ratio = original_height / original_width
-
             new_height = self.img_h
             new_width = int(new_height / aspect_ratio * 2)  # Compensate for block aspect ratio
 
             resized = image.resize((new_width, new_height))
-
-            # Convert to RGB if needed
             if resized.mode != "RGB":
                 resized = resized.convert("RGB")
 
-            # Get pixel data
             pixels = resized.load()
-            width, height = resized.size  # Note: PIL.Image.size returns (width, height)
-            print(aspect_ratio, width, height)
+            width, height = resized.size
+            rows = []
 
-            # Print using Unicode block characters with ANSI colors
             for y in range(height):
+                row_str = ""
                 for x in range(width):
                     r, g, b = pixels[x, y]  # type: ignore
-                    # Use upper block character (▀) with background color
-                    print(f"\033[48;2;{r};{g};{b}m \033[0m", end="")
-                print()  # New line after each row
+                    row_str += f"\033[48;2;{r};{g};{b}m \033[0m"
+                rows.append((row_str))
+            return rows
 
         except Exception as e:
-            print(f"Error displaying image with Unicode blocks: {e}", file=sys.stderr)
+            print(f"Error converting image to Unicode string: {e}", file=sys.stderr)
+            return []
 
     def plot(self):
         """
@@ -185,26 +163,50 @@ class Imageplot:
         term = os.environ.get("TERM", "")
         ascii_mode = os.environ.get("ASCII", "0") == "1"
         supported_terminal = ["xterm-kitty", "xterm-ghostty"]
-        is_kitty = term in supported_terminal and not ascii_mode
+        self.is_kitty = term in supported_terminal and not ascii_mode
 
         if not self.dataset:
-            # print("No images loaded to display.", file=sys.stderr)
             return
 
-        if is_kitty:
-            # print(f"Detected (TERM={term}). Using Kitty graphics protocol.")
-            for img in self.dataset:
-                self._display_kitty(img)
+        if self.is_kitty:
+            self.images = [self._display_kitty(img) for img in self.dataset]
         else:
-            # print(f"Kitty terminal not detected (TERM={term}). Using Unicode block fallback.")
-            for img in self.dataset:
-                self._display_unicode_blocks(img)
+            self.images = [self._image_to_unicode_str(img) for img in self.dataset]
 
     def render(self):
-        """ """
-        print("Render function not yet implemented.")
-        pass  # For now, does nothing
+        """
+        Renders the pre-processed images horizontally.
+        """
+        if not self.images:
+            return
+        try:
+            term_width = os.get_terminal_size().columns
+        except (AttributeError, OSError):
+            term_width = 120  # Fallback width
+
+        if not self.is_kitty:
+            # Logic for unicode printing
+            img_width = self.images[0][0].count("\x1b") // 2  # Adjustment to use whole terminal.
+            max_images_per_row = max(1, term_width // (img_width + 5))
+            for i in range(0, len(self.images), max_images_per_row):
+                group = self.images[i : i + max_images_per_row]
+                min_rows = min(len(img_str) for img_str in group)
+                truncated_images = [img_str[:min_rows] for img_str in group]
+
+                for row_parts in zip(*truncated_images):
+                    print("|".join(row_parts))
+        else:
+            x_offset: int = 0
+            # y_offset: int = 0
+            for i, (height, width, img_data) in enumerate(self.images):
+                img_data = img_data.replace("X=0", f"X={x_offset}")
+                if i == len(self.images) - 1:
+                    img_data = img_data.replace("C=1", "C=0")
+                sys.stdout.write(img_data)
+                x_offset += width
+
+            print(x_offset)
 
 
 if __name__ == "__main__":
-    Imageplot("media/monarch.png", 123, "non_existent_file.jpg")
+    Imageplot("media/monarch.png", "galax.png").render()  # ,"galax.png","galax.png","galax.png","galax.png", 123, "non_existent_file.jpg").render()
