@@ -40,6 +40,14 @@ Lineplot(x, y, x1, y1, width = 40, height=20, scatter=True, border="single", mar
 ```
 ![marker scatter](media/marker_scatter.png)
 
+## imageplot (Imageplot)
+>If your terminal supports the kitty graphics protocol, you may need to set the environment variable ASCII=1
+```python
+Imageplot("media/monarch.png").render()
+```
+![Imageplot](media/imageplot.png)
+## It also support kitty image protocol
+![ImageKitty](media/imagekitty.png)
 ### To come
 > stairs (Staircase Plot) \
 > barplot (Bar Plot - horizontal) \
@@ -48,7 +56,6 @@ Lineplot(x, y, x1, y1, width = 40, height=20, scatter=True, border="single", mar
 > densityplot (Density Plot) \
 > contourplot (Contour Plot) \
 > heatmap (Heatmap Plot) \
-> imageplot (Image Plot)
 
 
 # Documentation
