@@ -138,26 +138,63 @@ class Imageplot:
             # image.close() # Be careful if self.dataset is shared/reused
             pass
 
+    def _display_unicode_blocks(self, image: PILImage, width: int = 48):
+        """
+        Displays an image using colored Unicode block characters as a fallback.
+
+        Args:
+            image: PIL Image to display
+            width: Target width in characters (default: 48)
+        """
+        try:
+            # Calculate new height maintaining aspect ratio
+            original_width, original_height = image.size
+            aspect_ratio = original_height / original_width
+            height = int(width * aspect_ratio * 0.5)  # 0.5 because Unicode blocks are taller than wide
+            # Resize image
+            resized = image.resize((width, height))
+            # print(width, original_width, resized.size)
+
+            # Convert to RGB if needed
+            if resized.mode != "RGB":
+                resized = resized.convert("RGB")
+
+            # Get pixel data
+            pixels = resized.load()
+
+            # Print using Unicode block characters with ANSI colors
+            for y in range(height):
+                for x in range(width):
+                    r, g, b = pixels[x, y]  # type: ignore
+                    # Use upper block character (▀) with background color
+                    print(f"\033[48;2;{r};{g};{b}m \033[0m", end="")
+                print()  # New line after each row
+
+        except Exception as e:
+            print(f"Error displaying image with Unicode blocks: {e}", file=sys.stderr)
+
     def plot(self):
         """
         Plots the images in the dataset to the terminal.
         Currently uses the Kitty graphics protocol if detected.
         """
         term = os.environ.get("TERM", "")
-        is_kitty = term.startswith("xterm-")
+        ascii_mode = os.environ.get("ASCII", "0") == "1"
+        supported_terminal = ["xterm-kitty", "xterm-ghostty"]
+        is_kitty = term in supported_terminal and not ascii_mode
 
         if not self.dataset:
-            print("No images loaded to display.", file=sys.stderr)
+            # print("No images loaded to display.", file=sys.stderr)
             return
 
         if is_kitty:
-            print(f"Detected (TERM={term}). Using Kitty graphics protocol.")
+            # print(f"Detected (TERM={term}). Using Kitty graphics protocol.")
             for img in self.dataset:
                 self._display_kitty(img)
         else:
-            print(f"Warning: Kitty terminal graphics protocol not detected (TERM={term}).", file=sys.stderr)
-            print("Cannot display images directly in this terminal.", file=sys.stderr)
-            # Future: Fallback to ASCII art or other methods here
+            # print(f"Kitty terminal not detected (TERM={term}). Using Unicode block fallback.")
+            for img in self.dataset:
+                self._display_unicode_blocks(img)
 
     def render(self):
         """ """
@@ -166,4 +203,4 @@ class Imageplot:
 
 
 if __name__ == "__main__":
-    Imageplot("galax.png", 123, "non_existent_file.jpg")
+    Imageplot("media/monarch.png", 123, "non_existent_file.jpg")
