@@ -58,7 +58,7 @@ class Imageplot:
 
         self.plot()
 
-    def _match_value(self, value) -> Union[PILImage, NumericData, None]:
+    def _match_value(self, value) -> Union[PILImage, None]:
         match value:
             case PILImage():
                 return value
@@ -77,7 +77,7 @@ class Imageplot:
             case list() | tuple():
                 if self.mode == "numeric":
                     # Convert tuples to lists for consistent typing
-                    return list(value) if isinstance(value, tuple) else value
+                    return self._matrix_to_pil(list(value))
                 else:
                     # This will return List[PILImage] since mode isn't numeric
                     return [self._match_value(item) for item in value]  # type: ignore
@@ -85,7 +85,7 @@ class Imageplot:
                 return None
         return None
 
-    def _parse_arguments(self, *args) -> List[Union[PILImage, NumericData]]:
+    def _parse_arguments(self, *args) -> List[PILImage]:
         """
         Parse arguments provided during initialization.
 
@@ -103,21 +103,19 @@ class Imageplot:
             ValueError: If an argument is not a str, Path, PIL.Image, or an iterable of these.
             PIL.UnidentifiedImageError: If a file cannot be opened as an image.
         """
-        parsed_data: List[Union[PILImage, NumericData]] = []
+        parsed_data: List[PILImage] = []
 
         has_str = any(isinstance(arg, (str, Path, PILImage)) for arg in args)
         has_numeric = any(isinstance(arg, (tuple, list, set)) for arg in args)
         if has_str and has_numeric:
             raise TypeError("Iterable cannot contain str and tuple at the same time")
         self.mode = "numeric" if has_numeric else "image"
-        print(f"has_str: {has_str}, has_numeric: {has_numeric}, mode: {self.mode}")
 
         for value in args:
             img = self._match_value(value)
             if img is not None:
                 parsed_data.append(img)
 
-        print(f"dataset: {len(parsed_data)}")
         return parsed_data
 
     def _img_to_kitty_str(self, image: PILImage) -> Tuple[int, int, str]:
@@ -208,19 +206,8 @@ class Imageplot:
         self.is_kitty = term in SUPPORTED_TERM and not ascii_mode
 
         if not self.dataset:
-            # TODO raise eror here
             return
 
-        if self.mode == "numeric":
-            # TODO: Add support for numeric data
-            images_2: List[PILImage] = []
-            for img in self.dataset:
-                assert isinstance(img, (list, tuple))
-                images_2.append(self._matrix_to_pil(img))
-            # Only works with kitty
-            self.dataset = images_2
-
-        assert all(isinstance(img, PILImage) for img in self.dataset)
         if self.is_kitty:
             self.images = [self._img_to_kitty_str(img) for img in self.dataset]
         else:
