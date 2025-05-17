@@ -183,6 +183,35 @@ class Imageplot:
         if not self.dataset:
             return
 
+        if self.mode == "numeric":
+            # TODO: Add support for numeric data
+            images_2 = []
+            for img in self.dataset:
+                # Get the dimensions of the Python List
+                height = len(img)
+                width = len(img[0]) if height > 0 else 0
+
+                # Determine if data is grayscale or RGB by checking structure
+                if height > 0 and width > 0 and isinstance(img[0][0], (list, tuple)):
+                    dim = len(img[0][0])  # RGB or other multi-channel format
+                else:
+                    dim = 1  # Grayscale
+
+                print(f"height: {height}, width: {width}, dim: {dim}")
+
+                # Create appropriate image type based on dimensions
+                pilImg = Image.new("L" if dim == 1 else "RGB", (width, height))
+
+                # Handle data differently based on dimension
+                if dim == 1:
+                    # For grayscale, use values directly
+                    pilImg.putdata([p for row in img for p in row])
+                else:
+                    # For RGB/multi-channel, convert lists to tuples
+                    pilImg.putdata([tuple(p) for row in img for p in row])
+
+                images_2.append(pilImg)
+            self.dataset = images_2
         if self.is_kitty:
             self.images = [self._img_to_kitty_str(img) for img in self.dataset]
         else:
@@ -255,15 +284,15 @@ if __name__ == "__main__":
     import random
 
     img = "/home/billy/Programming/unicodeplot-py/media/monarch.png"
-    Imageplot(img).render()
-    Imageplot(img, img, img).render()
+    # Imageplot(img).render()
+    # Imageplot(img, img, img).render()
 
     # Create a 28x28 grayscale image with nested lists
-    grayscale = [[random.randint(0, 255) for _ in range(28)] for _ in range(28)]
-
+    size = 28
+    grayscale = [[random.randint(0, 255) for _ in range(size)] for _ in range(size)]
     # Create a 28x28 RGB image with nested lists
-    rgb = [[[random.randint(0, 255) for _ in range(3)] for _ in range(28)] for _ in range(28)]
+    rgb = [[[random.randint(0, 255) for _ in range(3)] for _ in range(size)] for _ in range(size)]
 
-    Imageplot(grayscale).render()
+    Imageplot(grayscale, rgb).render()
     # Imageplot(rgb).render()
     # Imageplot(grayscale,rgb).render()
