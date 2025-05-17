@@ -11,7 +11,20 @@ from PIL.Image import Image as PILImage
 # Type aliases for different data types
 NumericData: TypeAlias = List[List[Union[int, float, Sequence[Union[int, float]]]]]
 
-SUPPORTED_TERM = ["xterm-kitty", "xterm-ghostty"]
+# NOTE: note all SUPPORTED_TERMS were tested
+SUPPORTED_TERMS = [
+    "xterm-kitty",
+    "xterm-ghostty",
+    "WezTerm",
+    "iTerm.app",
+    "foot",
+    "alacritty",
+    "konsole",
+    "contour",
+    "Terminal.app",
+    "rxvt-unicode-256color",
+    "tmux-256color",
+]
 
 
 class Imageplot:
@@ -54,9 +67,6 @@ class Imageplot:
 
         self.mode: Literal["numeric", "image"] = "image"
         self.dataset = self._parse_arguments(*args)
-        self.images: List[Tuple[int, int, str]] | List[List[str]] = []
-
-        self.plot()
 
     def _match_value(self, value) -> Union[PILImage, None]:
         match value:
@@ -77,7 +87,7 @@ class Imageplot:
             case list() | tuple():
                 if self.mode == "numeric":
                     # Convert tuples to lists for consistent typing
-                    return self._matrix_to_pil(list(value))
+                    return self._matrix_to_image(list(value))
                 else:
                     # This will return List[PILImage] since mode isn't numeric
                     return [self._match_value(item) for item in value]  # type: ignore
@@ -118,7 +128,7 @@ class Imageplot:
 
         return parsed_data
 
-    def _img_to_kitty_str(self, image: PILImage) -> Tuple[int, int, str]:
+    def _encode_kitty(self, image: PILImage) -> Tuple[int, int, str]:
         """
         Displays a single PIL Image using the Kitty terminal graphics protocol.
 
@@ -140,7 +150,7 @@ class Imageplot:
         kitty_sequence = f"\033_Gf=100,a=T,t=d,X=0,Y=0,C=1,s={width},v={height};{decoded}\033\\  "
         return height, width, kitty_sequence
 
-    def _img_to_unicode_str(self, image: PILImage) -> List[str]:
+    def _encode_unicode(self, image: PILImage) -> List[str]:
         """
         Converts an image to a list of strings (one per row) using Unicode blocks.
 
@@ -175,7 +185,7 @@ class Imageplot:
             print(f"Error converting image to Unicode string: {e}", file=sys.stderr)
             return []
 
-    def _matrix_to_pil(self, matrix: NumericData) -> PILImage:
+    def _matrix_to_image(self, matrix: NumericData) -> PILImage:
         """
         Converts a 2D and 3D matrix to a PIL Image.
         Args:
@@ -196,83 +206,78 @@ class Imageplot:
         pilImg.putdata([p if isinstance(p, (int, float)) else tuple(p) for row in matrix for p in row])  # type: ignore
         return pilImg
 
-    def plot(self):
-        """
-        Plots the images in the dataset to the terminal.
-        Currently uses the Kitty graphics protocol if detected.
-        """
-        term = os.environ.get("TERM", "")
-        ascii_mode = os.environ.get("ASCII", "0") == "1"
-        self.is_kitty = term in SUPPORTED_TERM and not ascii_mode
+    def _render_kitty_rows(self, images: list[tuple[int, int, str]], term_width: int) -> None:
+        x_offset: int = 0
+        font_size = 10 / 1.5
+        max_width = term_width * font_size
+        rows = []
+        row: list[tuple[int, int, str]] = []
+        for height, width, img_data in images:
+            # width = int(width)
+            if x_offset + width >= max_width:
+                img_data = img_data.replace("C=1", "C=0") + "\n"
+                row.append((height, width, img_data))
+                rows.append(row)
+                row = []
+                x_offset = 0
+            else:
+                row.append((height, width, img_data))
+                x_offset += width
+        if row:
+            last_height, last_width, last_img_data = row[-1]
+            row[-1] = (last_height, last_width, last_img_data.replace("C=1", "C=0") + "\n")
+            rows.append(row)
+        for row in rows:
+            x_offset = 0
+            for height, width, img_data in row:
+                width = int(width)
+                img_data = img_data.replace("X=0", f"X={x_offset}")
+                sys.stdout.write(img_data)
+                x_offset += width
+            x_offset = 0
+            sys.stdout.flush()
+        print("\n\n")
 
-        if not self.dataset:
+    def _render_unicode_rows(self, images: list[list[str]], term_width: int) -> None:
+        # Find the first string row to compute img_width
+        first_row = None
+        for img in images:
+            if isinstance(img, list) and len(img) > 0 and isinstance(img[0], str):
+                first_row = img[0]
+                break
+        if first_row is None:
             return
-
-        if self.is_kitty:
-            self.images = [self._img_to_kitty_str(img) for img in self.dataset]
-        else:
-            self.images = [self._img_to_unicode_str(img) for img in self.dataset]
+        img_width = first_row.count("\x1b") // 2  # Adjustment to use whole terminal.
+        max_images_per_row = max(1, term_width // (img_width + 5))
+        for i in range(0, len(images), max_images_per_row):
+            print()
+            group = images[i : i + max_images_per_row]
+            min_rows = min(len(img_str) for img_str in group)
+            truncated_images = [img_str[:min_rows] for img_str in group]
+            for row_parts in zip(*truncated_images):
+                print(" | ".join(row_parts))
 
     def render(self):
         """
-        Renders the pre-processed images horizontally.
+        Renders the images to the terminal, choosing the appropriate protocol.
         """
-        if not self.images:
+        if not self.dataset:
             return
+        term = os.environ.get("TERM", "")
+        ascii_mode = os.environ.get("ASCII", "0") == "1"
+        is_kitty = term in SUPPORTED_TERMS and not ascii_mode
         try:
             term_width = os.get_terminal_size().columns
         except (AttributeError, OSError):
             term_width = 120  # Fallback width
 
-        if self.is_kitty:
-            # NOTE: we are assuming 10pt font and but to keep it safe we are keeping a safe place
-            x_offset: int = 0
-            font_size = 10 / 1.5
-            max_width = term_width * font_size
-
-            # Pre-processing
-            images = []
-            row = []
-            for i, (height, width, img_data) in enumerate(self.images):
-                if x_offset + width >= max_width:
-                    # last value
-                    img_data = img_data.replace("C=1", "C=0") + "\n"
-                    row.append([height, width, img_data])
-                    images.append(row)
-                    row = []
-                    x_offset = 0
-                else:
-                    row.append([height, width, img_data])
-                    x_offset += width
-
-            # Ensure the last element in the final row also has C=0
-            if row:
-                last_height, last_width, last_img_data = row[-1]
-                row[-1] = [last_height, last_width, last_img_data.replace("C=1", "C=0") + "\n"]
-                images.append(row)
-
-            for row in images:
-                x_offset = 0
-                for height, width, img_data in row:
-                    img_data = img_data.replace("X=0", f"X={x_offset}")
-                    sys.stdout.write(img_data)
-                    x_offset += width
-                x_offset = 0
-                sys.stdout.flush()
-            print("\n\n")
-
+        if is_kitty:
+            images = [self._encode_kitty(img) for img in self.dataset]
+            self._render_kitty_rows(images, term_width)
         else:
-            # Logic for unicode printing
-            img_width = self.images[0][0].count("\x1b") // 2  # Adjustment to use whole terminal.
-            max_images_per_row = max(1, term_width // (img_width + 5))
-            for i in range(0, len(self.images), max_images_per_row):
-                print()
-                group = self.images[i : i + max_images_per_row]
-                min_rows = min(len(img_str) for img_str in group)
-                truncated_images = [img_str[:min_rows] for img_str in group]
-
-                for row_parts in zip(*truncated_images):
-                    print(" | ".join(row_parts))
+            images = [self._encode_unicode(img) for img in self.dataset]
+            images_typed = images  # type: ignore
+            self._render_unicode_rows(images_typed, term_width)
 
 
 if __name__ == "__main__":
@@ -280,6 +285,7 @@ if __name__ == "__main__":
     import random
 
     img = "/home/billy/Programming/unicodeplot-py/media/monarch.png"
+    img = "/home/billy/Programming/unicodeplot-py/media/mnist.png"
     Imageplot(img).render()
     Imageplot(img, img, img).render()
 

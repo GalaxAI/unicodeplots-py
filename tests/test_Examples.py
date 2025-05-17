@@ -5,7 +5,7 @@ from random import seed, uniform
 import pytest
 
 from unicodeplots.plots import Imageplot, Lineplot
-from unicodeplots.plots.imageplot import SUPPORTED_TERM
+from unicodeplots.plots.imageplot import SUPPORTED_TERMS
 
 # The first time you run this, pytest-snapshot will save 'output'
 # Subsequent runs will compare 'output' to the saved version.
@@ -57,7 +57,7 @@ def test_imageplot_example_01(snapshot, capsys):
         pytest.skip("Skipping Kitty protocol test in CI environment")
 
     term = os.environ.get("TERM", "")
-    if term.lower() not in SUPPORTED_TERM:
+    if term.lower() not in SUPPORTED_TERMS:
         pytest.skip("Terminal doesn't support Kitty protocol")
 
     # With kitty protocol
