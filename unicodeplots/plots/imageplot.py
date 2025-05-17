@@ -203,34 +203,48 @@ class Imageplot:
             dim = len(matrix[0][0])
 
         pilImg = Image.new("L" if dim == 1 else "RGB", (width, height))
-        pilImg.putdata([p if isinstance(p, (int, float)) else tuple(p) for row in matrix for p in row])  # type: ignore
+
+        data: list = []
+        for row in matrix:
+            for pixel in row:
+                if isinstance(pixel, (list, tuple)):
+                    # For RGB/RGBA, ensure we have the correct number of channels
+                    if len(pixel) == 3:
+                        data.append(tuple(int(channel) for channel in pixel))
+                    elif len(pixel) == 4:
+                        data.append(tuple(int(channel) for channel in pixel[:3]))
+                elif isinstance(pixel, (int, float)):
+                    data.append(int(pixel))
+
+        pilImg.putdata(data)
         return pilImg
 
     def _render_kitty_rows(self, images: list[tuple[int, int, str]], term_width: int) -> None:
         x_offset: int = 0
         font_size = 10 / 1.5
         max_width = term_width * font_size
-        rows = []
         row: list[tuple[int, int, str]] = []
+        rows: list[list[tuple[int, int, str]]] = []
         for height, width, img_data in images:
-            # width = int(width)
+            # Check if the images fit in the current row
             if x_offset + width >= max_width:
                 img_data = img_data.replace("C=1", "C=0") + "\n"
                 row.append((height, width, img_data))
                 rows.append(row)
+                # Reset for the next row
                 row = []
                 x_offset = 0
             else:
                 row.append((height, width, img_data))
                 x_offset += width
         if row:
+            # Handle the last row
             last_height, last_width, last_img_data = row[-1]
             row[-1] = (last_height, last_width, last_img_data.replace("C=1", "C=0") + "\n")
             rows.append(row)
         for row in rows:
             x_offset = 0
             for height, width, img_data in row:
-                width = int(width)
                 img_data = img_data.replace("X=0", f"X={x_offset}")
                 sys.stdout.write(img_data)
                 x_offset += width
@@ -276,25 +290,4 @@ class Imageplot:
             self._render_kitty_rows(images, term_width)
         else:
             images = [self._encode_unicode(img) for img in self.dataset]
-            images_typed = images  # type: ignore
-            self._render_unicode_rows(images_typed, term_width)
-
-
-if __name__ == "__main__":
-    # TODO THIS IS WIP
-    import random
-
-    img = "/home/billy/Programming/unicodeplot-py/media/monarch.png"
-    img = "/home/billy/Programming/unicodeplot-py/media/mnist.png"
-    Imageplot(img).render()
-    Imageplot(img, img, img).render()
-
-    # Create a 28x28 grayscale image with nested lists
-    size = 128
-    grayscale = [[random.randint(0, 255) for _ in range(size)] for _ in range(size)]
-    # Create a 28x28 RGB image with nested lists
-    rgb = [[[random.randint(0, 255) for _ in range(3)] for _ in range(size)] for _ in range(size)]
-
-    Imageplot(grayscale).render()
-    Imageplot(rgb).render()
-    Imageplot(grayscale, rgb).render()
+            self._render_unicode_rows(images, term_width)
