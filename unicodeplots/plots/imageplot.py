@@ -35,15 +35,14 @@ class Imageplot:
 
     def __init__(
         self,
-        *args,  # *Images (Paths, strs, or PIL.Image objects)
-        # Also I want to add support for numpy arrays, pytorch tensors, and tinygrad tensors
+        *args,  # *Images (Paths, strs,PIL.Image objects) | * NumericData
         img_h: int = 24,
         title: Optional[str] = None,
         xlabel: Optional[str] = None,
         ylabel: Optional[str] = None,
         border: Optional[str] = "",
         legend: bool = False,
-        **kwrags,  # Keep kwargs for potential future canvas options
+        **kwargs,  # Keep kwargs for potential future canvas options
     ):
         """
         Initializes the Imageplot object.
@@ -116,16 +115,23 @@ class Imageplot:
         parsed_data: List[PILImage] = []
 
         has_str = any(isinstance(arg, (str, Path, PILImage)) for arg in args)
-        has_numeric = any(isinstance(arg, (tuple, list, set)) for arg in args)
+        has_numeric = False
+        for arg in args:
+            if isinstance(arg, (tuple, list, set)):
+                # Only consider it numeric if it doesn't contain image sources
+                if not any(isinstance(item, (str, Path, PILImage)) for item in arg):
+                    has_numeric = True
+                    break
         if has_str and has_numeric:
             raise TypeError("Iterable cannot contain str and tuple at the same time")
         self.mode = "numeric" if has_numeric else "image"
-
         for value in args:
             img = self._match_value(value)
             if img is not None:
-                parsed_data.append(img)
-
+                if isinstance(img, list) and self.mode == "image":
+                    parsed_data.extend(img)
+                else:
+                    parsed_data.append(img)
         return parsed_data
 
     def _encode_kitty(self, image: PILImage) -> Tuple[int, int, str]:
@@ -205,6 +211,8 @@ class Imageplot:
         pilImg = Image.new("L" if dim == 1 else "RGB", (width, height))
 
         data: list = []
+        if any(len(row) != width for row in matrix):
+            raise ValueError("All rows must have identical length")
         for row in matrix:
             for pixel in row:
                 if isinstance(pixel, (list, tuple)):
@@ -291,3 +299,12 @@ class Imageplot:
         else:
             images = [self._encode_unicode(img) for img in self.dataset]
             self._render_unicode_rows(images, term_width)
+
+
+if __name__ == "__main__":
+    img = "/home/billy/Programming/unicodeplot-py/media/mnist.png"
+
+    # Imageplot(img, img_h=24).render()
+    Imageplot([img], img_h=24).render()
+    Imageplot([img, img], img_h=24).render()
+    Imageplot(img, img, img_h=24).render()

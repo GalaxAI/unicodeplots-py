@@ -4,12 +4,12 @@ from unicodeplots.plots import Imageplot
 
 
 @pytest.mark.parametrize(
-    "backend,snapshot_prefix",
+    "backend",
     [
-        ("numpy", "Numpy"),
-        ("pytorch", "PyTorch"),
-        ("tinygrad", "TinyGrad"),
-        ("python", "Python"),
+        "numpy",
+        "pytorch",
+        "tinygrad",
+        "python",
     ],
 )
 @pytest.mark.parametrize(
@@ -23,7 +23,7 @@ from unicodeplots.plots import Imageplot
         "float64",
     ],
 )
-def test_imageplot_backends(backend, snapshot_prefix, dtype):
+def test_imageplot_backends(backend, dtype):
     """Test Imageplot with various backends and dtypes (numpy, pytorch, tinygrad, python lists)"""
     import random
 
@@ -110,3 +110,20 @@ def test_imageplot_backends(backend, snapshot_prefix, dtype):
     # Render both images (should not raise)
     Imageplot(grayscale).render()
     Imageplot(rgb).render()
+
+
+img_path = "media/monarch.png"
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        (img_path),
+        (img_path, img_path),
+        [img_path],
+        [img_path, img_path],
+    ],
+)
+def test_imageplot_str_parsing(args):
+    Imageplot(args).render()
+    Imageplot(*args).render()
