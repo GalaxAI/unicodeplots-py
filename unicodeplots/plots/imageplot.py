@@ -3,10 +3,13 @@ import io
 import os
 import sys
 from pathlib import Path
-from typing import Any, List, Optional, Tuple
+from typing import List, Literal, Optional, Sequence, Tuple, TypeAlias, Union
 
 from PIL import Image
 from PIL.Image import Image as PILImage
+
+# Type aliases for different data types
+NumericData: TypeAlias = List[List[Union[int, float, Sequence[Union[int, float]]]]]
 
 SUPPORTED_TERM = ["xterm-kitty", "xterm-ghostty"]
 
@@ -49,12 +52,13 @@ class Imageplot:
         self.legend = legend
         self.border_style = border
 
+        self.mode: Literal["numeric", "image"] = "image"
         self.dataset = self._parse_arguments(*args)
-        self.images: List[str] = []
+        self.images: List[Tuple[int, int, str]] | List[List[str]] = []
 
         self.plot()
 
-    def _match_value(self, value):
+    def _match_value(self, value) -> Union[PILImage, NumericData, None]:
         match value:
             case PILImage():
                 return value
@@ -72,14 +76,16 @@ class Imageplot:
                     print(f"Error opening image {value}: {e}", file=sys.stderr)
             case list() | tuple():
                 if self.mode == "numeric":
-                    return value
+                    # Convert tuples to lists for consistent typing
+                    return list(value) if isinstance(value, tuple) else value
                 else:
-                    # Convert each item in the iterable to an image
-                    return [self._match_value(item) for item in value]
+                    # This will return List[PILImage] since mode isn't numeric
+                    return [self._match_value(item) for item in value]  # type: ignore
             case _:
                 return None
+        return None
 
-    def _parse_arguments(self, *args) -> List[PILImage]:
+    def _parse_arguments(self, *args) -> List[Union[PILImage, NumericData]]:
         """
         Parse arguments provided during initialization.
 
@@ -90,14 +96,14 @@ class Imageplot:
                 - An iterable containing any of the above types
 
         Returns:
-            A list of PIL.Image.Image objects.
+            A list of PIL.Image.Image objects or NumericData.
 
         Raises:
             FileNotFoundError: If a path provided does not exist.
             ValueError: If an argument is not a str, Path, PIL.Image, or an iterable of these.
             PIL.UnidentifiedImageError: If a file cannot be opened as an image.
         """
-        dataset: List[Any] = []
+        parsed_data: List[Union[PILImage, NumericData]] = []
 
         has_str = any(isinstance(arg, (str, Path, PILImage)) for arg in args)
         has_numeric = any(isinstance(arg, (tuple, list, set)) for arg in args)
@@ -108,11 +114,11 @@ class Imageplot:
 
         for value in args:
             img = self._match_value(value)
-            if img:
-                dataset.append(img)
+            if img is not None:
+                parsed_data.append(img)
 
-        print(f"dataset: {len(dataset)}")
-        return dataset
+        print(f"dataset: {len(parsed_data)}")
+        return parsed_data
 
     def _img_to_kitty_str(self, image: PILImage) -> Tuple[int, int, str]:
         """
@@ -171,6 +177,27 @@ class Imageplot:
             print(f"Error converting image to Unicode string: {e}", file=sys.stderr)
             return []
 
+    def _matrix_to_pil(self, matrix: NumericData) -> PILImage:
+        """
+        Converts a 2D and 3D matrix to a PIL Image.
+        Args:
+            matrix: A 2D or 3D list representing pixel values.
+        Returns:
+            A PIL Image object.
+        """
+
+        height = len(matrix)
+        width = len(matrix[0]) if height > 0 else 0
+
+        # Determine if data is grayscale or RGB by checking structure
+        dim = 1
+        if height > 0 and width > 0 and isinstance(matrix[0][0], (list, tuple)):
+            dim = len(matrix[0][0])
+
+        pilImg = Image.new("L" if dim == 1 else "RGB", (width, height))
+        pilImg.putdata([p if isinstance(p, (int, float)) else tuple(p) for row in matrix for p in row])  # type: ignore
+        return pilImg
+
     def plot(self):
         """
         Plots the images in the dataset to the terminal.
@@ -181,37 +208,19 @@ class Imageplot:
         self.is_kitty = term in SUPPORTED_TERM and not ascii_mode
 
         if not self.dataset:
+            # TODO raise eror here
             return
 
         if self.mode == "numeric":
             # TODO: Add support for numeric data
-            images_2 = []
+            images_2: List[PILImage] = []
             for img in self.dataset:
-                # Get the dimensions of the Python List
-                height = len(img)
-                width = len(img[0]) if height > 0 else 0
-
-                # Determine if data is grayscale or RGB by checking structure
-                if height > 0 and width > 0 and isinstance(img[0][0], (list, tuple)):
-                    dim = len(img[0][0])  # RGB or other multi-channel format
-                else:
-                    dim = 1  # Grayscale
-
-                print(f"height: {height}, width: {width}, dim: {dim}")
-
-                # Create appropriate image type based on dimensions
-                pilImg = Image.new("L" if dim == 1 else "RGB", (width, height))
-
-                # Handle data differently based on dimension
-                if dim == 1:
-                    # For grayscale, use values directly
-                    pilImg.putdata([p for row in img for p in row])
-                else:
-                    # For RGB/multi-channel, convert lists to tuples
-                    pilImg.putdata([tuple(p) for row in img for p in row])
-
-                images_2.append(pilImg)
+                assert isinstance(img, (list, tuple))
+                images_2.append(self._matrix_to_pil(img))
+            # Only works with kitty
             self.dataset = images_2
+
+        assert all(isinstance(img, PILImage) for img in self.dataset)
         if self.is_kitty:
             self.images = [self._img_to_kitty_str(img) for img in self.dataset]
         else:
@@ -284,15 +293,15 @@ if __name__ == "__main__":
     import random
 
     img = "/home/billy/Programming/unicodeplot-py/media/monarch.png"
-    # Imageplot(img).render()
-    # Imageplot(img, img, img).render()
+    Imageplot(img).render()
+    Imageplot(img, img, img).render()
 
     # Create a 28x28 grayscale image with nested lists
-    size = 28
+    size = 128
     grayscale = [[random.randint(0, 255) for _ in range(size)] for _ in range(size)]
     # Create a 28x28 RGB image with nested lists
     rgb = [[[random.randint(0, 255) for _ in range(3)] for _ in range(size)] for _ in range(size)]
 
+    Imageplot(grayscale).render()
+    Imageplot(rgb).render()
     Imageplot(grayscale, rgb).render()
-    # Imageplot(rgb).render()
-    # Imageplot(grayscale,rgb).render()
