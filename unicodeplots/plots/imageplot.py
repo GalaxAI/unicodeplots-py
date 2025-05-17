@@ -3,7 +3,7 @@ import io
 import os
 import sys
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 from PIL import Image
 from PIL.Image import Image as PILImage
@@ -20,6 +20,7 @@ class Imageplot:
     def __init__(
         self,
         *args,  # *Images (Paths, strs, or PIL.Image objects)
+        # Also I want to add support for numpy arrays, pytorch tensors, and tinygrad tensors
         img_h: int = 24,
         title: Optional[str] = None,
         xlabel: Optional[str] = None,
@@ -53,6 +54,31 @@ class Imageplot:
 
         self.plot()
 
+    def _match_value(self, value):
+        match value:
+            case PILImage():
+                return value
+            case str() | Path():
+                try:  # Attempt to open the image
+                    path = Path(value).resolve()
+                    if not path.is_file():
+                        raise FileNotFoundError(f"Image file not found: {value}")
+                    return Image.open(path)
+                except FileNotFoundError as e:
+                    print(f"Error: {e}", file=sys.stderr)
+                except Image.UnidentifiedImageError:
+                    print(f"Error: Cannot identify image file format: {value}", file=sys.stderr)
+                except Exception as e:  # Catch other potential PIL errors
+                    print(f"Error opening image {value}: {e}", file=sys.stderr)
+            case list() | tuple():
+                if self.mode == "numeric":
+                    return value
+                else:
+                    # Convert each item in the iterable to an image
+                    return [self._match_value(item) for item in value]
+            case _:
+                return None
+
     def _parse_arguments(self, *args) -> List[PILImage]:
         """
         Parse arguments provided during initialization.
@@ -71,39 +97,21 @@ class Imageplot:
             ValueError: If an argument is not a str, Path, PIL.Image, or an iterable of these.
             PIL.UnidentifiedImageError: If a file cannot be opened as an image.
         """
-        dataset: List[PILImage] = []
+        dataset: List[Any] = []
 
-        def process_value(value):
-            if isinstance(value, PILImage):
-                return value
-            elif isinstance(value, (str, Path)):
-                try:
-                    path = Path(value).resolve()
-                    if not path.is_file():
-                        raise FileNotFoundError(f"Image file not found: {value}")
-                    return Image.open(path)
-                except FileNotFoundError as e:
-                    print(f"Error: {e}", file=sys.stderr)
-                except Image.UnidentifiedImageError:
-                    print(f"Error: Cannot identify image file format: {value}", file=sys.stderr)
-                except Exception as e:  # Catch other potential PIL errors
-                    print(f"Error opening image {value}: {e}", file=sys.stderr)
-            elif hasattr(value, "__iter__") and not isinstance(value, (str, bytes)):
-                # Process iterables recursively, but skip strings as they're already handled
-                for item in value:
-                    img = process_value(item)
-                    if img:
-                        dataset.append(img)
-            else:
-                print(f"Warning: Value needs to be a str, Path, PIL.Image or an iterable of these. Ignoring value: {value!r}", file=sys.stderr)
-
-            return None
+        has_str = any(isinstance(arg, (str, Path, PILImage)) for arg in args)
+        has_numeric = any(isinstance(arg, (tuple, list, set)) for arg in args)
+        if has_str and has_numeric:
+            raise TypeError("Iterable cannot contain str and tuple at the same time")
+        self.mode = "numeric" if has_numeric else "image"
+        print(f"has_str: {has_str}, has_numeric: {has_numeric}, mode: {self.mode}")
 
         for value in args:
-            img = process_value(value)
+            img = self._match_value(value)
             if img:
                 dataset.append(img)
 
+        print(f"dataset: {len(dataset)}")
         return dataset
 
     def _img_to_kitty_str(self, image: PILImage) -> Tuple[int, int, str]:
@@ -240,3 +248,22 @@ class Imageplot:
 
                 for row_parts in zip(*truncated_images):
                     print(" | ".join(row_parts))
+
+
+if __name__ == "__main__":
+    # TODO THIS IS WIP
+    import random
+
+    img = "/home/billy/Programming/unicodeplot-py/media/monarch.png"
+    Imageplot(img).render()
+    Imageplot(img, img, img).render()
+
+    # Create a 28x28 grayscale image with nested lists
+    grayscale = [[random.randint(0, 255) for _ in range(28)] for _ in range(28)]
+
+    # Create a 28x28 RGB image with nested lists
+    rgb = [[[random.randint(0, 255) for _ in range(3)] for _ in range(28)] for _ in range(28)]
+
+    Imageplot(grayscale).render()
+    # Imageplot(rgb).render()
+    # Imageplot(grayscale,rgb).render()
