@@ -68,6 +68,20 @@ class Imageplot:
         self.dataset = self._parse_arguments(*args)
 
     def _match_value(self, value) -> Union[PILImage, None]:
+        """
+        Converts a value to a PIL Image or list of PIL Images based on its type.
+        Args:
+            value: The value to convert. Can be one of:
+                - A PIL.Image.Image object (returned as is)
+                - A string or Path object (interpreted as a file path to an image)
+                - A list/tuple (processed recursively or converted from numeric data)
+
+        Returns:
+            One of the following:
+                - A PIL.Image.Image object if the value can be directly converted
+                - A list of PIL.Image.Image objects if the value is a container of images
+                - None if the value cannot be converted to an image
+        """
         match value:
             case PILImage():
                 return value
@@ -94,6 +108,18 @@ class Imageplot:
                 return None
         return None
 
+    def is_numeric_structure(self, obj):
+        """Helper to determine if an object is a valid numeric structure"""
+        if isinstance(obj, (tuple, list)):
+            if not obj:  # Handle empty lists/tuples
+                return False
+            # Check first element is a list or numeric value
+            if isinstance(obj[0], (int, float)):
+                return all(isinstance(item, (int, float)) for item in obj)
+            elif isinstance(obj[0], (list, tuple)):
+                return all(isinstance(item, (list, tuple)) for item in obj)
+        return False
+
     def _parse_arguments(self, *args) -> List[PILImage]:
         """
         Parse arguments provided during initialization.
@@ -115,13 +141,7 @@ class Imageplot:
         parsed_data: List[PILImage] = []
 
         has_str = any(isinstance(arg, (str, Path, PILImage)) for arg in args)
-        has_numeric = False
-        for arg in args:
-            if isinstance(arg, (tuple, list, set)):
-                # Only consider it numeric if it doesn't contain image sources
-                if not any(isinstance(item, (str, Path, PILImage)) for item in arg):
-                    has_numeric = True
-                    break
+        has_numeric = any(self.is_numeric_structure(arg) for arg in args)
         if has_str and has_numeric:
             raise TypeError("Iterable cannot contain str and tuple at the same time")
         self.mode = "numeric" if has_numeric else "image"
@@ -218,11 +238,11 @@ class Imageplot:
                 if isinstance(pixel, (list, tuple)):
                     # For RGB/RGBA, ensure we have the correct number of channels
                     if len(pixel) == 3:
-                        data.append(tuple(int(channel) for channel in pixel))
+                        data.append(tuple(max(0, min(255, int(channel))) for channel in pixel))
                     elif len(pixel) == 4:
-                        data.append(tuple(int(channel) for channel in pixel[:3]))
+                        data.append(tuple(max(0, min(255, int(channel))) for channel in pixel[:3]))
                 elif isinstance(pixel, (int, float)):
-                    data.append(int(pixel))
+                    data.append(max(0, min(255, int(pixel))))
 
         pilImg.putdata(data)
         return pilImg

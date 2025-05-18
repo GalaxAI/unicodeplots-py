@@ -1,6 +1,17 @@
+from pathlib import Path
+
 import pytest
 
 from unicodeplots.plots import Imageplot
+
+img_path = "media/monarch.png"
+
+
+@pytest.fixture(scope="module")
+def check_test_image():
+    """Ensure the test image exists or skip the test"""
+    if not Path(img_path).is_file():
+        pytest.skip(f"Test image not found: {img_path}")
 
 
 @pytest.mark.parametrize(
@@ -112,9 +123,6 @@ def test_imageplot_backends(backend, dtype):
     Imageplot(rgb).render()
 
 
-img_path = "media/monarch.png"
-
-
 @pytest.mark.parametrize(
     "args",
     [
@@ -124,6 +132,6 @@ img_path = "media/monarch.png"
         [img_path, img_path],
     ],
 )
-def test_imageplot_str_parsing(args):
+def test_imageplot_str_parsing(check_test_image, args):
     Imageplot(args).render()
     Imageplot(*args).render()
