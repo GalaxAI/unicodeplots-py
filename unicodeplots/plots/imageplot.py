@@ -3,12 +3,28 @@ import io
 import os
 import sys
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Literal, Optional, Sequence, Tuple, TypeAlias, Union
 
 from PIL import Image
 from PIL.Image import Image as PILImage
 
-SUPPORTED_TERM = ["xterm-kitty", "xterm-ghostty"]
+# Type aliases for different data types
+NumericData: TypeAlias = List[List[Union[int, float, Sequence[Union[int, float]]]]]
+
+# NOTE: note all SUPPORTED_TERMS were tested
+SUPPORTED_TERMS = [
+    "xterm-kitty",
+    "xterm-ghostty",
+    "WezTerm",
+    "iTerm.app",
+    "foot",
+    "alacritty",
+    "konsole",
+    "contour",
+    "Terminal.app",
+    "rxvt-unicode-256color",
+    "tmux-256color",
+]
 
 
 class Imageplot:
@@ -19,14 +35,14 @@ class Imageplot:
 
     def __init__(
         self,
-        *args,  # *Images (Paths, strs, or PIL.Image objects)
+        *args,  # *Images (Paths, strs,PIL.Image objects) | * NumericData
         img_h: int = 24,
         title: Optional[str] = None,
         xlabel: Optional[str] = None,
         ylabel: Optional[str] = None,
         border: Optional[str] = "",
         legend: bool = False,
-        **kwrags,  # Keep kwargs for potential future canvas options
+        **kwargs,  # Keep kwargs for potential future canvas options
     ):
         """
         Initializes the Imageplot object.
@@ -48,10 +64,61 @@ class Imageplot:
         self.legend = legend
         self.border_style = border
 
+        self.mode: Literal["numeric", "image"] = "image"
         self.dataset = self._parse_arguments(*args)
-        self.images: List[str] = []
 
-        self.plot()
+    def _match_value(self, value) -> Union[PILImage, None]:
+        """
+        Converts a value to a PIL Image or list of PIL Images based on its type.
+        Args:
+            value: The value to convert. Can be one of:
+                - A PIL.Image.Image object (returned as is)
+                - A string or Path object (interpreted as a file path to an image)
+                - A list/tuple (processed recursively or converted from numeric data)
+
+        Returns:
+            One of the following:
+                - A PIL.Image.Image object if the value can be directly converted
+                - A list of PIL.Image.Image objects if the value is a container of images
+                - None if the value cannot be converted to an image
+        """
+        match value:
+            case PILImage():
+                return value
+            case str() | Path():
+                try:  # Attempt to open the image
+                    path = Path(value).resolve()
+                    if not path.is_file():
+                        raise FileNotFoundError(f"Image file not found: {value}")
+                    return Image.open(path)
+                except FileNotFoundError as e:
+                    print(f"Error: {e}", file=sys.stderr)
+                except Image.UnidentifiedImageError:
+                    print(f"Error: Cannot identify image file format: {value}", file=sys.stderr)
+                except Exception as e:  # Catch other potential PIL errors
+                    print(f"Error opening image {value}: {e}", file=sys.stderr)
+            case list() | tuple():
+                if self.mode == "numeric":
+                    # Convert tuples to lists for consistent typing
+                    return self._matrix_to_image(list(value))
+                else:
+                    # This will return List[PILImage] since mode isn't numeric
+                    return [self._match_value(item) for item in value]  # type: ignore
+            case _:
+                return None
+        return None
+
+    def is_numeric_structure(self, obj):
+        """Helper to determine if an object is a valid numeric structure"""
+        if isinstance(obj, (tuple, list)):
+            if not obj:  # Handle empty lists/tuples
+                return False
+            # Check first element is a list or numeric value
+            if isinstance(obj[0], (int, float)):
+                return all(isinstance(item, (int, float)) for item in obj)
+            elif isinstance(obj[0], (list, tuple)):
+                return all(isinstance(item, (list, tuple)) for item in obj)
+        return False
 
     def _parse_arguments(self, *args) -> List[PILImage]:
         """
@@ -64,49 +131,30 @@ class Imageplot:
                 - An iterable containing any of the above types
 
         Returns:
-            A list of PIL.Image.Image objects.
+            A list of PIL.Image.Image objects or NumericData.
 
         Raises:
             FileNotFoundError: If a path provided does not exist.
             ValueError: If an argument is not a str, Path, PIL.Image, or an iterable of these.
             PIL.UnidentifiedImageError: If a file cannot be opened as an image.
         """
-        dataset: List[PILImage] = []
+        parsed_data: List[PILImage] = []
 
-        def process_value(value):
-            if isinstance(value, PILImage):
-                return value
-            elif isinstance(value, (str, Path)):
-                try:
-                    path = Path(value).resolve()
-                    if not path.is_file():
-                        raise FileNotFoundError(f"Image file not found: {value}")
-                    return Image.open(path)
-                except FileNotFoundError as e:
-                    print(f"Error: {e}", file=sys.stderr)
-                except Image.UnidentifiedImageError:
-                    print(f"Error: Cannot identify image file format: {value}", file=sys.stderr)
-                except Exception as e:  # Catch other potential PIL errors
-                    print(f"Error opening image {value}: {e}", file=sys.stderr)
-            elif hasattr(value, "__iter__") and not isinstance(value, (str, bytes)):
-                # Process iterables recursively, but skip strings as they're already handled
-                for item in value:
-                    img = process_value(item)
-                    if img:
-                        dataset.append(img)
-            else:
-                print(f"Warning: Value needs to be a str, Path, PIL.Image or an iterable of these. Ignoring value: {value!r}", file=sys.stderr)
-
-            return None
-
+        has_str = any(isinstance(arg, (str, Path, PILImage)) for arg in args)
+        has_numeric = any(self.is_numeric_structure(arg) for arg in args)
+        if has_str and has_numeric:
+            raise TypeError("Iterable cannot contain str and tuple at the same time")
+        self.mode = "numeric" if has_numeric else "image"
         for value in args:
-            img = process_value(value)
-            if img:
-                dataset.append(img)
+            img = self._match_value(value)
+            if img is not None:
+                if isinstance(img, list) and self.mode == "image":
+                    parsed_data.extend(img)
+                else:
+                    parsed_data.append(img)
+        return parsed_data
 
-        return dataset
-
-    def _img_to_kitty_str(self, image: PILImage) -> Tuple[int, int, str]:
+    def _encode_kitty(self, image: PILImage) -> Tuple[int, int, str]:
         """
         Displays a single PIL Image using the Kitty terminal graphics protocol.
 
@@ -128,7 +176,7 @@ class Imageplot:
         kitty_sequence = f"\033_Gf=100,a=T,t=d,X=0,Y=0,C=1,s={width},v={height};{decoded}\033\\  "
         return height, width, kitty_sequence
 
-    def _img_to_unicode_str(self, image: PILImage) -> List[str]:
+    def _encode_unicode(self, image: PILImage) -> List[str]:
         """
         Converts an image to a list of strings (one per row) using Unicode blocks.
 
@@ -163,80 +211,120 @@ class Imageplot:
             print(f"Error converting image to Unicode string: {e}", file=sys.stderr)
             return []
 
-    def plot(self):
+    def _matrix_to_image(self, matrix: NumericData) -> PILImage:
         """
-        Plots the images in the dataset to the terminal.
-        Currently uses the Kitty graphics protocol if detected.
+        Converts a 2D and 3D matrix to a PIL Image.
+        Args:
+            matrix: A 2D or 3D list representing pixel values.
+        Returns:
+            A PIL Image object.
         """
-        term = os.environ.get("TERM", "")
-        ascii_mode = os.environ.get("ASCII", "0") == "1"
-        self.is_kitty = term in SUPPORTED_TERM and not ascii_mode
 
-        if not self.dataset:
+        height = len(matrix)
+        width = len(matrix[0]) if height > 0 else 0
+
+        # Determine if data is grayscale or RGB by checking structure
+        dim = 1
+        if height > 0 and width > 0 and isinstance(matrix[0][0], (list, tuple)):
+            dim = len(matrix[0][0])
+
+        pilImg = Image.new("L" if dim == 1 else "RGB", (width, height))
+
+        data: list = []
+        if any(len(row) != width for row in matrix):
+            raise ValueError("All rows must have identical length")
+        for row in matrix:
+            for pixel in row:
+                if isinstance(pixel, (list, tuple)):
+                    # For RGB/RGBA, ensure we have the correct number of channels
+                    if len(pixel) == 3:
+                        data.append(tuple(max(0, min(255, int(channel))) for channel in pixel))
+                    elif len(pixel) == 4:
+                        data.append(tuple(max(0, min(255, int(channel))) for channel in pixel[:3]))
+                elif isinstance(pixel, (int, float)):
+                    data.append(max(0, min(255, int(pixel))))
+
+        pilImg.putdata(data)
+        return pilImg
+
+    def _render_kitty_rows(self, images: list[tuple[int, int, str]], term_width: int) -> None:
+        x_offset: int = 0
+        font_size = 10 / 1.5
+        max_width = term_width * font_size
+        row: list[tuple[int, int, str]] = []
+        rows: list[list[tuple[int, int, str]]] = []
+        for height, width, img_data in images:
+            # Check if the images fit in the current row
+            if x_offset + width >= max_width:
+                img_data = img_data.replace("C=1", "C=0") + "\n"
+                row.append((height, width, img_data))
+                rows.append(row)
+                # Reset for the next row
+                row = []
+                x_offset = 0
+            else:
+                row.append((height, width, img_data))
+                x_offset += width
+        if row:
+            # Handle the last row
+            last_height, last_width, last_img_data = row[-1]
+            row[-1] = (last_height, last_width, last_img_data.replace("C=1", "C=0") + "\n")
+            rows.append(row)
+        for row in rows:
+            x_offset = 0
+            for height, width, img_data in row:
+                img_data = img_data.replace("X=0", f"X={x_offset}")
+                sys.stdout.write(img_data)
+                x_offset += width
+            x_offset = 0
+            sys.stdout.flush()
+        print("\n\n")
+
+    def _render_unicode_rows(self, images: list[list[str]], term_width: int) -> None:
+        # Find the first string row to compute img_width
+        first_row = None
+        for img in images:
+            if isinstance(img, list) and len(img) > 0 and isinstance(img[0], str):
+                first_row = img[0]
+                break
+        if first_row is None:
             return
-
-        if self.is_kitty:
-            self.images = [self._img_to_kitty_str(img) for img in self.dataset]
-        else:
-            self.images = [self._img_to_unicode_str(img) for img in self.dataset]
+        img_width = first_row.count("\x1b") // 2  # Adjustment to use whole terminal.
+        max_images_per_row = max(1, term_width // (img_width + 5))
+        for i in range(0, len(images), max_images_per_row):
+            print()
+            group = images[i : i + max_images_per_row]
+            min_rows = min(len(img_str) for img_str in group)
+            truncated_images = [img_str[:min_rows] for img_str in group]
+            for row_parts in zip(*truncated_images):
+                print(" | ".join(row_parts))
 
     def render(self):
         """
-        Renders the pre-processed images horizontally.
+        Renders the images to the terminal, choosing the appropriate protocol.
         """
-        if not self.images:
+        if not self.dataset:
             return
+        term = os.environ.get("TERM", "")
+        ascii_mode = os.environ.get("ASCII", "0") == "1"
+        is_kitty = term in SUPPORTED_TERMS and not ascii_mode
         try:
             term_width = os.get_terminal_size().columns
         except (AttributeError, OSError):
             term_width = 120  # Fallback width
 
-        if self.is_kitty:
-            # NOTE: we are assuming 10pt font and but to keep it safe we are keeping a safe place
-            x_offset: int = 0
-            font_size = 10 / 1.5
-            max_width = term_width * font_size
-
-            # Pre-processing
-            images = []
-            row = []
-            for i, (height, width, img_data) in enumerate(self.images):
-                if x_offset + width >= max_width:
-                    # last value
-                    img_data = img_data.replace("C=1", "C=0") + "\n"
-                    row.append([height, width, img_data])
-                    images.append(row)
-                    row = []
-                    x_offset = 0
-                else:
-                    row.append([height, width, img_data])
-                    x_offset += width
-
-            # Ensure the last element in the final row also has C=0
-            if row:
-                last_height, last_width, last_img_data = row[-1]
-                row[-1] = [last_height, last_width, last_img_data.replace("C=1", "C=0") + "\n"]
-                images.append(row)
-
-            for row in images:
-                x_offset = 0
-                for height, width, img_data in row:
-                    img_data = img_data.replace("X=0", f"X={x_offset}")
-                    sys.stdout.write(img_data)
-                    x_offset += width
-                x_offset = 0
-                sys.stdout.flush()
-            print("\n\n")
-
+        if is_kitty:
+            images = [self._encode_kitty(img) for img in self.dataset]
+            self._render_kitty_rows(images, term_width)
         else:
-            # Logic for unicode printing
-            img_width = self.images[0][0].count("\x1b") // 2  # Adjustment to use whole terminal.
-            max_images_per_row = max(1, term_width // (img_width + 5))
-            for i in range(0, len(self.images), max_images_per_row):
-                print()
-                group = self.images[i : i + max_images_per_row]
-                min_rows = min(len(img_str) for img_str in group)
-                truncated_images = [img_str[:min_rows] for img_str in group]
+            images = [self._encode_unicode(img) for img in self.dataset]
+            self._render_unicode_rows(images, term_width)
 
-                for row_parts in zip(*truncated_images):
-                    print(" | ".join(row_parts))
+
+if __name__ == "__main__":
+    img = "/home/billy/Programming/unicodeplot-py/media/mnist.png"
+
+    # Imageplot(img, img_h=24).render()
+    Imageplot([img], img_h=24).render()
+    Imageplot([img, img], img_h=24).render()
+    Imageplot(img, img, img_h=24).render()
