@@ -25,11 +25,12 @@ jobs:
     - name: Install dependencies
       run: |
         uv sync --group test
+        uv pip install -e .
 
     - name: Run tests with snapshots
       id: run_tests
       run: |
-        pytest tests/ -v
+        uv run pytest tests/ -v
 
     - name: Upload snapshot comparison on failure
       uses: actions/upload-artifact@v4
