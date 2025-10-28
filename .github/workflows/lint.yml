@@ -26,7 +26,7 @@ jobs:
       run: uv run ruff check --output-format=github
 
     - name: mypy types
-      run: uv run mypy --strict-equality
+      run: uv run mypy --strict-equality .
 
     - name: "Experimental: ty check"
       if: always()
