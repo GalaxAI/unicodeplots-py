@@ -94,7 +94,10 @@ class Imageplot:
                 except FileNotFoundError as e:
                     print(f"Error: {e}", file=sys.stderr)
                 except Image.UnidentifiedImageError:
-                    print(f"Error: Cannot identify image file format: {value}", file=sys.stderr)
+                    print(
+                        f"Error: Cannot identify image file format: {value}",
+                        file=sys.stderr,
+                    )
                 except Exception as e:  # Catch other potential PIL errors
                     print(f"Error opening image {value}: {e}", file=sys.stderr)
             case list() | tuple():
@@ -268,7 +271,11 @@ class Imageplot:
         if row:
             # Handle the last row
             last_height, last_width, last_img_data = row[-1]
-            row[-1] = (last_height, last_width, last_img_data.replace("C=1", "C=0") + "\n")
+            row[-1] = (
+                last_height,
+                last_width,
+                last_img_data.replace("C=1", "C=0") + "\n",
+            )
             rows.append(row)
         for row in rows:
             x_offset = 0

@@ -10,27 +10,27 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-22.04]
+        os: [ubuntu-latest]
         python-version: ["3.11","3.12","3.13"]
 
     steps:
     - uses: actions/checkout@v4
-
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
       with:
-        python-version: ${{ matrix.python-version }}
+        version: "latest"
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
 
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
-        python -m pip install -e .[test]
+        uv sync --group test
+        uv pip install -e .
 
     - name: Run tests with snapshots
       id: run_tests
       run: |
-        pytest tests/ -v
+        uv run pytest tests/ -v
 
     - name: Upload snapshot comparison on failure
       uses: actions/upload-artifact@v4

@@ -25,7 +25,18 @@ def test_lineplot_example_01(snapshot):
 
 def test_lineplot_example_02(snapshot):
     x_vals = [x / 10 for x in range(-31, 62)]
-    plot = Lineplot(x_vals, math.sin, x_vals, math.cos, width=80, height=60, show_axes=True, border="single", xlabel="x", ylabel="f(x)")
+    plot = Lineplot(
+        x_vals,
+        math.sin,
+        x_vals,
+        math.cos,
+        width=80,
+        height=60,
+        show_axes=True,
+        border="single",
+        xlabel="x",
+        ylabel="f(x)",
+    )
     output = plot.render()
     snapshot.assert_match(output, "Lineplot_Example_02.txt")
 
@@ -47,7 +58,19 @@ def test_lineplot_example_04(snapshot):
     x1 = [uniform(-5, 5) for _ in range(100)]
     y1 = [uniform(-5, 5) for _ in range(100)]
 
-    plot = Lineplot(x, y, x1, y1, width=40, height=20, scatter=True, border="single", marker=["*", "x"], title="Scatter Plot w Marker", show_axes=True)
+    plot = Lineplot(
+        x,
+        y,
+        x1,
+        y1,
+        width=40,
+        height=20,
+        scatter=True,
+        border="single",
+        marker=["*", "x"],
+        title="Scatter Plot w Marker",
+        show_axes=True,
+    )
     output = plot.render()
     snapshot.assert_match(output, "Lineplot_Example_04.txt")
 

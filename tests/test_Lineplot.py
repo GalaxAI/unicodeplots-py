@@ -33,11 +33,22 @@ lineplot_data_and_scale_cases = [
     ("Linear scale, Y=3*X, X=[0..5]", (0, 6), lambda x: 3 * x, None, 0, 15),
     ("Log10 scale, Y=10^X, X=[1..4]", (1, 5), lambda x: 10**x, math.log10, 1, 4),
     ("Linear scale, Y=X^2, X=[-3..3]", (-3, 4), lambda x: x**2, None, 0, 9),
-    ("Log scale (base e), Y=e^X, X=[1..5]", (1, 6), lambda x: math.exp(x), math.log, 1.0, 5.0),
+    (
+        "Log scale (base e), Y=e^X, X=[1..5]",
+        (1, 6),
+        lambda x: math.exp(x),
+        math.log,
+        1.0,
+        5.0,
+    ),
 ]
 
 
-@pytest.mark.parametrize("test_id, args, expected_output", parse_arguments_cases, ids=[c[0] for c in parse_arguments_cases])
+@pytest.mark.parametrize(
+    "test_id, args, expected_output",
+    parse_arguments_cases,
+    ids=[c[0] for c in parse_arguments_cases],
+)
 def test_parse_arguments(test_id, args, expected_output):
     """
     Tests the Lineplot._parse_arguments method with various input formats.
@@ -67,7 +78,14 @@ def test_parse_arguments(test_id, args, expected_output):
     lineplot_data_and_scale_cases,
     ids=[case[0] for case in lineplot_data_and_scale_cases],
 )
-def test_lineplot_data_and_scale(description, x_range_params, y_generator_func, yscale_func, expected_scaled_min_y, expected_scaled_max_y):
+def test_lineplot_data_and_scale(
+    description,
+    x_range_params,
+    y_generator_func,
+    yscale_func,
+    expected_scaled_min_y,
+    expected_scaled_max_y,
+):
     """
     Tests Lineplot with various data generation methods and y-axis scaling.
     """
