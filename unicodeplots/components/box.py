@@ -170,7 +170,13 @@ class BorderBox:
         title_line += self.border_chars["top_right"]
         return title_line
 
-    def _render_plot_content(self, plot_content: List[str], left_margin: int, y_label_width: int, y_value_width: int) -> List[str]:
+    def _render_plot_content(
+        self,
+        plot_content: List[str],
+        left_margin: int,
+        y_label_width: int,
+        y_value_width: int,
+    ) -> List[str]:
         """Render the main plot content with y-axis labels and values."""
         result = []
         y_val_min, y_val_max = self.y_range

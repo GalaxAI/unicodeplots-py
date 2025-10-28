@@ -259,7 +259,11 @@ class Lineplot:
 
         plot_lines = raw_plot.splitlines()
 
-        border_box = BorderBox(width=self.canvas.rows, height=self.canvas.cols, border_type=self.border_style or "")
+        border_box = BorderBox(
+            width=self.canvas.rows,
+            height=self.canvas.cols,
+            border_type=self.border_style or "",
+        )
 
         if self.title:
             border_box.set_title(self.title)
