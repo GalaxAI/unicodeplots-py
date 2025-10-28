@@ -2,9 +2,6 @@
 *.vscode
 *.pt
 
-## I don't want uv.lock
-*.lock
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

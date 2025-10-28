@@ -10,16 +10,18 @@ img = [
     "pillow>=11.1.0",
 ]
 
+
+[dependency-groups]
+lint = [
+    "mypy>=1.15.0",
+    "ruff>=0.11.0",
+]
+
 dev = [
     "mypy>=1.15.0",
     "pre-commit>=4.1.0",
     "pytest>=8.3.5",
     "pytest-snapshot>=0.9.0",
-    "ruff>=0.11.0",
-]
-
-lint = [
-    "mypy>=1.15.0",
     "ruff>=0.11.0",
 ]
 
@@ -32,6 +34,7 @@ test = [
     "torch",
 ]
 
+
 [tool.setuptools]
 packages = [
     "unicodeplots",
@@ -39,6 +42,16 @@ packages = [
     "unicodeplots.plots",
     "unicodeplots.components",
     "unicodeplots.utils",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cpu" },
 ]
 
 [tool.ruff]
