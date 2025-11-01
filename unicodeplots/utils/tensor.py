@@ -1,10 +1,5 @@
 import os
-import random
 from collections.abc import Iterable
-
-import numpy as np
-import torch
-from tinygrad import Tensor as TinyTensor
 
 os.environ["CPU"] = "1"
 
@@ -103,20 +98,3 @@ class TensorAdapter:
         if type(self.data).__module__ == "tinygrad.tensor":
             return f"tinygrad.tensor({self.data.tolist()})"
         return repr(self.data)
-
-
-if __name__ == "__main__":
-    py = [[[random.random() * 255 for _ in range(3)] for _ in range(28)] for _ in range(28)]
-    trch = torch.randint(0, 256, (28, 28, 3))
-    nmpy = np.random.randint(0, 256, size=(28, 28, 3))
-    tiny = TinyTensor.randint(28, 28, 3, low=0, high=256)
-    pyt = TensorAdapter(py)
-    trch = TensorAdapter(trch)
-    nmpy = TensorAdapter(nmpy)
-    tiny = TensorAdapter(tiny)
-    print(pyt.shape, trch.shape, nmpy.shape, tiny.shape)
-    print(len(pyt))
-    a = TensorAdapter(TinyTensor([1]))
-    b = TensorAdapter(TinyTensor(1))
-    c = a + b
-    print(c, a, b)
