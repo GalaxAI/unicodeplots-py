@@ -47,22 +47,20 @@ class TensorAdapter:
 
     # to support python lists
     @staticmethod
-    def _shape(x) -> tuple:
-        if not isinstance(x, list):
+    def _resolve_shape(value):
+        if isinstance(value, TensorAdapter):
+            return TensorAdapter._resolve_shape(value.data)
+        if hasattr(value, "shape"):
+            return tuple(value.shape)
+        if not isinstance(value, list):
             return ()
-        if not x:
+        if not value:
             return (0,)
-        return (len(x), *TensorAdapter._shape(x[0]))
+        return (len(value), *TensorAdapter._resolve_shape(value[0]))
 
     @property
     def shape(self) -> tuple:
-        if hasattr(self.data, "shape"):
-            return self.data.shape
-        if not isinstance(self.data, list):
-            return ()
-        if not self.data:
-            return (0,)
-        return self._shape(self.data)
+        return self._resolve_shape(self.data)
 
     def __getitem__(self, key) -> "TensorAdapter":
         if isinstance(key, tuple):
