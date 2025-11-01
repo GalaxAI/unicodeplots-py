@@ -1,5 +1,6 @@
 import os
 import random
+from collections.abc import Iterable
 
 import numpy as np
 import torch
@@ -26,6 +27,28 @@ class TensorAdapter:
         if name not in dir(self):
             return getattr(self.data, name)
 
+    @staticmethod
+    def __to_int(data):
+        if isinstance(data, list):
+            return [TensorAdapter.__to_int(x) for x in data]
+        elif isinstance(data, (float, int)):
+            return int(data)
+        elif hasattr(data, "int"):
+            return data.int()
+        elif hasattr(data, "astype"):
+            return data.astype("int")
+
+    def to_int(self):
+        if isinstance(self.data, list):
+            print(type(self.data), type(self.data[0]))
+            self.data = [self.__to_int(x) for x in self.data]
+        elif isinstance(self.data, (float, int)):
+            self.data = int(self.data)
+        elif hasattr(self.data, "int"):
+            self.data = self.data.int()
+        elif hasattr(self.data, "astype"):
+            self.data = self.data.astype("int")
+
     # to support python lists
     @staticmethod
     def _shape(x) -> tuple:
@@ -45,13 +68,23 @@ class TensorAdapter:
             return (0,)
         return self._shape(self.data)
 
-    def __getitem__(self, key):
+    def __getitem__(self, key) -> "TensorAdapter":
         if isinstance(key, tuple):
             idx = self.data
             for v in key:
                 idx = idx[v]
-            return idx
-        return self.data[key]
+            return TensorAdapter(idx)
+        return TensorAdapter(self.data[key])
+
+    def __iter__(self):
+        if isinstance(self.data, Iterable):
+            for item in self.data:
+                yield TensorAdapter(item)
+        else:
+            raise TypeError("Cannot iterate over non-list data")
+
+    def __int__(self) -> int:
+        return int(self.data)
 
     ## Math ops
     __add__ = forward_op("__add__")
@@ -64,6 +97,7 @@ class TensorAdapter:
     __rtruediv__ = forward_op("__rtruediv__")
     __matmul__ = forward_op("__matmul__")
     __imatmul__ = forward_op("__imatmul__")
+    __len__ = forward_op("__len__")
 
     def __str__(self):
         if type(self.data).__module__ == "tinygrad.tensor":
@@ -80,7 +114,7 @@ if __name__ == "__main__":
     py = [[[random.random() * 255 for _ in range(3)] for _ in range(28)] for _ in range(28)]
     trch = torch.randint(0, 256, (28, 28, 3))
     nmpy = np.random.randint(0, 256, size=(28, 28, 3))
-    tiny = TinyTensor.randint(28, 28, 3, low=0, high=256).tolist()
+    tiny = TinyTensor.randint(28, 28, 3, low=0, high=256)
     pyt = TensorAdapter(py)
     trch = TensorAdapter(trch)
     nmpy = TensorAdapter(nmpy)

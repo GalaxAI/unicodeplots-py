@@ -1,5 +1,10 @@
+import base64
+import sys
+from io import BytesIO
+from pathlib import Path
 from random import random
 
+from PIL import Image
 from PIL.Image import Image as PILImage
 
 from unicodeplots.utils.tensor import TensorAdapter
@@ -21,10 +26,8 @@ class BetterImagePlot:
     Takes only one image
     """
 
-    def __init__(self, X: list[list[int]] | str | PILImage, img_h: int = 24, numeric: bool = True):
+    def __init__(self, X: list[list[int]] | str | PILImage):
         self.X = X
-        self.img_h = img_h
-        self.numeric_mode = numeric
         ### Box params
         """
         I want to migrate box params somewhere
@@ -32,9 +35,35 @@ class BetterImagePlot:
 
     def render(self):
         self._parse_input()
+        self.render_kitty(self.X)
         self.render_unicode(self.X)
 
-    def unicode_encode(self, image) -> list[str]:
+    def render_kitty(self, data):
+        shape = data.shape
+        mode = "RGB" if len(shape) == 3 else "L"
+        height, width = shape[0], shape[1]
+        flat_pixels = []
+        for row in data:
+            for pixel in row:
+                pixel = tuple(map(int, pixel)) if mode == "RGB" else int(pixel)
+                flat_pixels.append(pixel)
+
+        img = Image.new(mode, size=(width, height))
+        img.putdata(data=flat_pixels)
+
+        buffer = BytesIO()
+        img.save(buffer, format="PNG")
+        img_bytes = buffer.getvalue()
+        img_base64 = base64.b64encode(img_bytes).decode("utf-8")
+        kitty_sequence = f"\033_Gf=100,a=T,t=d,X=0,Y=0,C=0,s={width},v={height};{img_base64}\033\\  \n"
+        sys.stdout.write(kitty_sequence)
+
+    def render_unicode(self, data):
+        img = self.unicode_encode(data)
+        for row in img:
+            print(row)
+
+    def unicode_encode(self, image: TensorAdapter) -> list[str]:
         rows = []
         is_rgb = len(image.shape) == 3
 
@@ -50,28 +79,41 @@ class BetterImagePlot:
             rows.append(row)
         return rows
 
-    def render_unicode(self, data):
-        img = self.unicode_encode(data)
-        for row in img:
-            print(row)
+    @staticmethod
+    def load_image(path: str | Path) -> list[list[list[int]]]:
+        img = Image.open(path)
+
+        if img.mode != "RGB":
+            img = img.convert("RGB")
+
+        width, height = img.size
+        pixels = list(img.getdata())
+
+        # One-liner to reshape
+        return [[[int(c) for c in pixels[y * width + x]] for x in range(width)] for y in range(height)]
 
     def _parse_input(self):
-        match self.numeric_mode:
+        # Add ensure Int
+        match isinstance(self.X, (str, PILImage, Path)):
             case True:
-                self.X = TensorAdapter(self.X)
-            case False:
-                # TODO reading file
+                try:
+                    self.X = TensorAdapter(self.load_image(self.X))
+                except Exception as e:
+                    print(f"Error loading image: {e}")
+                # Load error image bc i think its funny
                 pass
+            case False:
+                self.X = TensorAdapter(self.X)
 
 
 if __name__ == "__main__":
     img = "media/monarch.png"
 
     ## Numeric
-    grayscale = [[random() * 255 for _ in range(28)] for _ in range(28)]
     rgb = [[[random() * 255 for _ in range(3)] for _ in range(28)] for _ in range(28)]
-    BetterImagePlot(rgb, img_h=24).render()
-    BetterImagePlot(grayscale, img_h=24).render()
+    grayscale = [[random() * 255 for _ in range(28)] for _ in range(28)]
+    BetterImagePlot(rgb).render()
+    BetterImagePlot(grayscale).render()
     ## Non numeric
 
-    # BetterImagePlot(img, img_h=24).render()
+    # BetterImagePlot(img).render()
