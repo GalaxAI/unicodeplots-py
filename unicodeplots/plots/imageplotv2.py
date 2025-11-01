@@ -3,6 +3,7 @@ import sys
 from io import BytesIO
 from pathlib import Path
 from random import random
+from typing import TypeAlias
 
 from PIL import Image
 from PIL.Image import Image as PILImage
@@ -20,13 +21,16 @@ X could be :
     str ~ path
 """
 
+Image2D: TypeAlias = PILImage | list[list[int]] | str
+Image3D: TypeAlias = list[list[list[int]]] | str | PILImage
+
 
 class BetterImagePlot:
     """
     Takes only one image
     """
 
-    def __init__(self, X: list[list[int]] | str | PILImage):
+    def __init__(self, X: Image2D | Image3D):
         self.X = X
         ### Box params
         """
@@ -40,7 +44,7 @@ class BetterImagePlot:
 
     def render_kitty(self, data):
         shape = data.shape
-        mode = "RGB" if len(shape) == 3 else "L"
+        mode = "RGB" if len(shape) == 3 and shape[2] == 3 else "L"
         height, width = shape[0], shape[1]
         flat_pixels = []
         for row in data:
@@ -65,7 +69,7 @@ class BetterImagePlot:
 
     def unicode_encode(self, image: TensorAdapter) -> list[str]:
         rows = []
-        is_rgb = len(image.shape) == 3
+        is_rgb = len(image.shape) == 3 and image.shape[2] == 3
 
         for y in range(image.shape[0]):
             row = ""
@@ -100,9 +104,9 @@ class BetterImagePlot:
                     self.X = TensorAdapter(self.load_image(self.X))
                 except Exception as e:
                     print(f"Error loading image: {e}")
-                # Load error image bc i think its funny
+                    # Load error image bc i think its funny
                 pass
-            case False:
+            case False:  # Numeric
                 self.X = TensorAdapter(self.X)
 
 

@@ -28,26 +28,22 @@ class TensorAdapter:
             return getattr(self.data, name)
 
     @staticmethod
-    def __to_int(data):
-        if isinstance(data, list):
-            return [TensorAdapter.__to_int(x) for x in data]
-        elif isinstance(data, (float, int)):
-            return int(data)
-        elif hasattr(data, "int"):
-            return data.int()
-        elif hasattr(data, "astype"):
-            return data.astype("int")
+    def _coerce_to_int(value):
+        if isinstance(value, TensorAdapter):
+            return TensorAdapter._coerce_to_int(value.data)
+        if isinstance(value, list):
+            return [TensorAdapter._coerce_to_int(item) for item in value]
+        if isinstance(value, (int, float)):
+            return int(value)
+        if hasattr(value, "int"):
+            return value.int()
+        if hasattr(value, "astype"):
+            return value.astype("int")
+        return value  # fall back unchanged
 
     def to_int(self):
-        if isinstance(self.data, list):
-            print(type(self.data), type(self.data[0]))
-            self.data = [self.__to_int(x) for x in self.data]
-        elif isinstance(self.data, (float, int)):
-            self.data = int(self.data)
-        elif hasattr(self.data, "int"):
-            self.data = self.data.int()
-        elif hasattr(self.data, "astype"):
-            self.data = self.data.astype("int")
+        self.data = self._coerce_to_int(self.data)
+        return self
 
     # to support python lists
     @staticmethod
