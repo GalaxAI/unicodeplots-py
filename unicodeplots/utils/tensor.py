@@ -24,8 +24,7 @@ class TensorAdapter:
         self.data = data
 
     def __getattr__(self, name):
-        if name not in dir(self):
-            return getattr(self.data, name)
+        return getattr(self.data, name)
 
     @staticmethod
     def _coerce_to_int(value):
@@ -91,7 +90,9 @@ class TensorAdapter:
     __rtruediv__ = forward_op("__rtruediv__")
     __matmul__ = forward_op("__matmul__")
     __imatmul__ = forward_op("__imatmul__")
-    __len__ = forward_op("__len__")
+
+    def __len__(self):
+        return len(self.data)
 
     def __str__(self):
         if type(self.data).__module__ == "tinygrad.tensor":
@@ -114,6 +115,7 @@ if __name__ == "__main__":
     nmpy = TensorAdapter(nmpy)
     tiny = TensorAdapter(tiny)
     print(pyt.shape, trch.shape, nmpy.shape, tiny.shape)
+    print(len(pyt))
     a = TensorAdapter(TinyTensor([1]))
     b = TensorAdapter(TinyTensor(1))
     c = a + b
