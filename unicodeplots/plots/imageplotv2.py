@@ -107,7 +107,7 @@ def load_image(path: str | Path) -> PILImage:
 class GridImagePlot:
     def __init__(
         self,
-        images: Sequence[Image2D | Image3D],
+        images: Sequence[Image2D | Image3D | strImage],
         *,
         cols: int = 5,
         padding: int = 16,
@@ -123,7 +123,7 @@ class GridImagePlot:
         for img in self.images:
             if isinstance(img, PILImage):
                 pil_images.append(img)
-            elif isinstance(img, strImage):
+            elif isinstance(img, (str, Path)):
                 pil_images.append(load_image(img))
             else:  # Note this is really slow
                 tensor = TensorAdapter(img)
@@ -158,7 +158,7 @@ class GridImagePlot:
 
 
 def create_kitty_sequence(img: PILImage) -> str:
-    height, width = img.size
+    width, height = img.size
     buffer = BytesIO()
     img.save(buffer, format="PNG")
     img_bytes = buffer.getvalue()
